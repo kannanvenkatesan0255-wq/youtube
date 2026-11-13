@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 84" width="120" height="84">
+  <defs>
+    <linearGradient id="vtGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF1A4B" />
+      <stop offset="100%" stop-color="#D60029" />
+    </linearGradient>
+  </defs>
+  <!-- Main Rounded TV/Screen Badge -->
+  <rect x="2" y="2" width="116" height="80" rx="24" ry="24" fill="url(#vtGrad)" />
+  <!-- White Play Triangle with slight rounded corners -->
+  <path d="M48 26 L80 42 L48 58 Z" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="2" stroke-linejoin="round" />
+</svg>
