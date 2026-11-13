@@ -1,11 +1,12 @@
 /**
  * Main API Route Aggregator
- * VidTube Platform Architecture
+ * VidTube Platform Architecture - Phase 3 Video Upload & Management Engine
  */
 const { Router } = require('express');
 const healthRoutes = require('./health.routes');
 const authRoutes = require('./auth.routes');
 const userRoutes = require('./user.routes');
+const videoRoutes = require('./video.routes');
 
 const router = Router();
 
@@ -15,6 +16,9 @@ router.use('/health', healthRoutes);
 // Mount active Phase 2 Authentication & User Account routes
 router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
+
+// Mount active Phase 3 Video Upload, Storage & Management Engine routes
+router.use('/videos', videoRoutes);
 
 /**
  * Architectural Module Placeholders for Subsequent Phases
@@ -36,8 +40,7 @@ const createPhasePlaceholder = (moduleName, targetPhase) => {
 };
 
 // Register architectural route boundaries for upcoming phases
-router.use('/channels', createPhasePlaceholder('Channels', 3));
-router.use('/videos', createPhasePlaceholder('Videos', 4));
+router.use('/channels', createPhasePlaceholder('Channels', 4));
 router.use('/shorts', createPhasePlaceholder('Shorts', 5));
 router.use('/comments', createPhasePlaceholder('Comments', 6));
 router.use('/likes', createPhasePlaceholder('Likes', 6));

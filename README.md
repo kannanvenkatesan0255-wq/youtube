@@ -3,7 +3,7 @@
 <div align="center">
   <img src="client/public/vidtube-logo.svg" alt="VidTube Logo" width="120" />
   <h3>A Production-Oriented YouTube Replica Built with Modern Full-Stack Technologies</h3>
-  <p>Phase 2 Active: Robust Authentication, Security Engine, JWT HttpOnly Cookies, Password Recovery & YouTube UI</p>
+  <p>Phase 3 Active: Video Upload, Storage, Creator Studio Management & YouTube UI</p>
 
   [![React](https://img.shields.io/badge/React-19.0-61DAFB?logo=react&logoColor=black)](https://react.dev/)
   [![Vite](https://img.shields.io/badge/Vite-6.1-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
@@ -11,6 +11,7 @@
   [![Node.js](https://img.shields.io/badge/Node.js-24.x-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
   [![Express.js](https://img.shields.io/badge/Express-4.21-000000?logo=express&logoColor=white)](https://expressjs.com/)
   [![MongoDB](https://img.shields.io/badge/MongoDB-Atlas%20%2F%20Mongoose-47A248?logo=mongodb&logoColor=white)](https://mongoosejs.com/)
+  [![Cloudinary](https://img.shields.io/badge/Cloudinary-Signed%20Direct%20Storage-3448C5?logo=cloudinary&logoColor=white)](https://cloudinary.com/)
   [![JWT](https://img.shields.io/badge/Auth-JWT%20%2B%20bcrypt-000000?logo=json-web-tokens&logoColor=white)](https://jwt.io/)
 </div>
 
@@ -21,86 +22,79 @@
 **VidTube** is a professional, full-scale video sharing and streaming web platform designed as an internship capstone project. The project meticulously reproduces the familiar user interface, design patterns, and engineering quality of **YouTube**.
 
 ### Phase Status:
-- **Phase 1: Architecture & UI Shell** — ✅ COMPLETED
-- **Phase 2: Authentication & Security Engine** — ✅ COMPLETED
-- **Phases 3–10** — Scheduled per [PROJECT_ROADMAP.md](docs/PROJECT_ROADMAP.md)
+- **Phase 1: Architecture & UI Shell** — ✅ COMPLETED (`d342b80`)
+- **Phase 2: Authentication & Security Engine** — ✅ COMPLETED (`05c768f`)
+- **Phase 3: Video Upload, Storage & Management Engine** — ✅ COMPLETED
+- **Phases 4–10** — Scheduled per [PROJECT_ROADMAP.md](docs/PROJECT_ROADMAP.md)
 
 ---
 
-## 🔐 Phase 2 — Authentication & Security Architecture
+## 📹 Phase 3 — Video Upload, Storage & Management Engine
 
-Phase 2 introduces a production-ready authentication and account security engine:
+Phase 3 implements a complete, end-to-end video ingestion and studio management pipeline:
 
-### 1. Token Strategy & Session Management
-- **Short-Lived Access Tokens (15 min):** Signed with HMAC SHA-256 (`JWT_SECRET`), contains `{ id, role, email, username }`.
-- **Long-Lived Refresh Tokens (7 days):** Stored in MongoDB and signed with `JWT_REFRESH_SECRET`. Allows seamless token rotation without forcing user logouts.
-- **HttpOnly Cookies:** Delivered with `HttpOnly`, `SameSite: 'lax'`, and `Secure: true` in production to mitigate Cross-Site Scripting (XSS) risks.
-- **Authorization Header Support:** Also supports `Bearer <accessToken>` for external or programmatic API access.
+### 1. Direct-to-Cloud Signed Upload Architecture
+- **Zero-Bottleneck Architecture:** Instead of routing multi-hundred megabyte video files through the Node.js API server (which exhausts server memory and blocks event loops), clients request a secure, cryptographically signed upload signature from `POST /api/videos/upload-signature` using Cloudinary API Secret.
+- **Client Direct Streaming:** The browser uploads the binary payload directly to Cloudinary's high-speed CDN ingestion nodes with real-time percentage progress and Axios `AbortController` cancellation support.
+- **Metadata Registration & Completion Confirmation:**
+  1. `POST /api/videos`: Creates initial video draft in database (`processingStatus: 'uploading'`).
+  2. Browser streams file to Cloudinary.
+  3. `POST /api/videos/:id/complete`: Confirms upload, stores asset URL, dimensions, duration, format, publicId, and advances status to `ready`.
+  4. Automatically increments the creator's Channel `videosCount`.
 
-### 2. Automatic Channel Provisioning
-- Upon user registration, a default creator **Channel** is automatically provisioned and linked to the account:
-  - Channel name: user's display name
-  - Channel handle: unique `@username`
-  - Channel owner: user's ObjectId
-  - Avatar: synchronized with the user profile picture
+### 2. Visibility & Privacy Access Control
+- **Public:** Fully searchable, appears in `/api/videos` feeds, homepage grid, and accessible to everyone.
+- **Unlisted:** Excluded from public search feeds and discovery, but accessible directly via URL (`/watch/:id` / `GET /api/videos/:id`) to anyone with the link.
+- **Private:** Strictly restricted. Returns `HTTP 403 Forbidden` if accessed by unauthenticated guests or any user other than the owner / admin.
 
-### 3. Password Recovery Engine
-- **Cryptographically Secure Tokens:** 32-byte crypto random tokens, hashed with SHA-256 for database storage.
-- **Single-Use Enforcement:** Tokens expire after 15 minutes and are automatically invalidated upon successful password change.
-- **Anti-Enumeration Security:** The forgot-password endpoint always returns a generic success message, preventing malicious attackers from guessing registered user email addresses.
-- **SMTP & Development Fallback:** Full SMTP delivery support via Nodemailer, with an automatic development mode that outputs reset links to server logs when SMTP credentials are not yet configured.
-
-### 4. Security Hardening
-- **Rate Limiting (`express-rate-limit`):**
-  - Registration: 10 accounts / hour per IP
-  - Login: 10 attempts / 15 minutes per IP
-  - Password Reset: 5 requests / hour per IP
-  - Auth General: 100 requests / 15 minutes per IP
-- **Helmet Headers:** Secure HTTP headers configured.
-- **CORS Credentials:** Whitelist verification with `credentials: true`.
-- **Mass Assignment Protection:** Regular profile updates cannot alter `role`, `accountStatus`, or `isVerified`.
-- **Safe Serialization:** Sensitive fields (`passwordHash`, `refreshToken`, `passwordResetToken`, `passwordResetExpires`) are automatically stripped from JSON responses via Mongoose `toJSON` transforms.
+### 3. Creator Studio & Video Management
+- **Creator Dashboard (`/studio/videos` & `/my-videos`):** View all uploaded videos (public, unlisted, private), complete with status badges, view counters, duration, timestamps, and search/filter.
+- **Inline Video Edit Modal:** Update title, description, category, tags, and visibility in real time.
+- **Thumbnail Management:** Update video thumbnail with custom image URLs or direct uploads.
+- **Safe Video Deletion (`DELETE /api/videos/:id`):** Enforces ownership check, automatically purges the video asset from Cloudinary storage, removes the MongoDB document, and decrements the creator's channel `videosCount`.
 
 ---
 
-## 📡 API Specification — Authentication & Users
-
-### Authentication Endpoints (`/api/auth`)
-
-| Method | Endpoint | Description | Auth Required | Rate Limit |
-|---|---|---|---|---|
-| `POST` | `/api/auth/register` | Register user & auto-create default channel | No | 10 / hour |
-| `POST` | `/api/auth/login` | Authenticate with email/username + password | No | 10 / 15 min |
-| `POST` | `/api/auth/logout` | Invalidate session & clear cookies | No / Yes | Standard |
-| `GET` | `/api/auth/me` | Fetch currently authenticated user session | **Yes** | Standard |
-| `POST` | `/api/auth/refresh` | Rotate access token via refresh token | No (Cookie) | 100 / 15 min |
-| `POST` | `/api/auth/forgot-password` | Request password reset email | No | 5 / hour |
-| `POST` | `/api/auth/reset-password` | Set new password with valid token | No | 5 / hour |
-
-### User Account Endpoints (`/api/users`)
+## 📡 API Specification — Video Management (`/api/videos`)
 
 | Method | Endpoint | Description | Auth Required |
 |---|---|---|---|
-| `GET` | `/api/users/profile` | Get current user profile and linked channel | **Yes** |
-| `PATCH` | `/api/users/profile` | Update permitted profile fields (`name`, `username`) | **Yes** |
-| `POST` | `/api/users/change-password` | Change password (verifies current password) | **Yes** |
-| `PATCH` | `/api/users/avatar` | Update user and channel avatar URL | **Yes** |
+| `POST` | `/api/videos/upload-signature` | Generate signed params for direct Cloudinary upload | **Yes** |
+| `POST` | `/api/videos` | Create new video draft metadata record | **Yes** |
+| `POST` | `/api/videos/:id/complete` | Confirm successful Cloudinary upload & finalize metadata | **Yes (Owner)** |
+| `GET` | `/api/videos` | Query public videos with search, category filter, and pagination | No |
+| `GET` | `/api/videos/my-videos` | Fetch authenticated creator's videos (all visibilities) | **Yes** |
+| `GET` | `/api/videos/:id` | Fetch single video details (enforces private authorization) | Optional |
+| `PATCH` | `/api/videos/:id` | Update video details (title, description, category, tags) | **Yes (Owner)** |
+| `PATCH` | `/api/videos/:id/thumbnail` | Update custom video thumbnail | **Yes (Owner)** |
+| `PATCH` | `/api/videos/:id/visibility` | Update video visibility (public / unlisted / private) | **Yes (Owner)** |
+| `DELETE` | `/api/videos/:id` | Delete video and purge Cloudinary assets | **Yes (Owner)** |
 
 ---
 
-## 🎨 Frontend Authentication Pages & Architecture
+## 🎨 Frontend Video Pages & Components
 
-All authentication flows are styled strictly to reproduce the YouTube/Google account visual identity:
-
-- **Sign In (`/login`):** Centered card, email/username input, show/hide password toggle, remember me checkbox, forgot password link, inline validation, and redirect after sign-in.
-- **Sign Up (`/register`):** Full name, username, email, password, confirm password, interactive `PasswordStrength` checklist meter, terms acceptance, auto-channel preview.
-- **Forgot Password (`/forgot-password`):** Email input with clear anti-enumeration feedback and instructions.
-- **Reset Password (`/reset-password/:token`):** Token validation from URL, password strength meter, confirm password, auto-redirect on completion.
-- **Account Settings & Profile (`/profile`):** User avatar preview and quick preset avatars, editable display name and handle, password change form, and sign-out button.
-- **Header Auth Integration:** Displays user's actual profile avatar when logged in with a YouTube dropdown menu (Your Channel, Settings, Sign Out). When logged out, displays YouTube's blue outlined "Sign In" pill.
-- **Route Guards:**
-  - `<ProtectedRoute>`: Restricts `/profile` and `/settings` to authenticated users.
-  - `<GuestRoute>`: Redirects already logged-in users away from `/login`, `/register`, and `/forgot-password`.
+- **Video Upload Page (`/upload`):**
+  - Drag-and-drop file dropzone with native file browser fallback.
+  - Client-side video preview via `URL.createObjectURL` where supported.
+  - Thumbnail URL input / preview.
+  - Video title (with char count), description, category dropdown, tags input chips.
+  - Radio selector for visibility (`Public`, `Unlisted`, `Private`).
+  - Real-time animated progress bar with percentage readout.
+  - Cancel upload button (`AbortController`).
+  - Upload success celebration card with instant link to Creator Studio.
+- **Creator Studio Videos Dashboard (`/studio/videos` / `/my-videos`):**
+  - Video management table with thumbnail, title, description, date, visibility badges, and view counts.
+  - Live search filter and visibility dropdown filter.
+  - Edit details dialog modal.
+  - Delete confirmation dialog.
+- **Homepage (`/`):**
+  - Fetches real public videos from backend `GET /api/videos`.
+  - Gracefully falls back to sample showcase videos if database has zero videos, maintaining rich visual shell at all times.
+- **Header "+ Create" Button:**
+  - Authenticated creators navigate straight to `/upload`.
+  - Unauthenticated guests navigate to `/login`.
+  - Dropdown menu features direct link to "VidTube Studio" (`/studio/videos`).
 
 ---
 
@@ -117,10 +111,14 @@ JWT_REFRESH_SECRET=your_secure_refresh_token_secret
 JWT_REFRESH_EXPIRES_IN=7d
 CLIENT_URL=http://localhost:5173
 
-# Optional: Cloudinary Storage (Phase 4)
+# Cloudinary Storage Configuration
 CLOUDINARY_CLOUD_NAME=your_cloud_name
 CLOUDINARY_API_KEY=your_api_key
 CLOUDINARY_API_SECRET=your_api_secret
+
+# Upload Limits
+MAX_VIDEO_SIZE_MB=500
+MAX_THUMBNAIL_SIZE_MB=10
 
 # Optional: SMTP Email Service for Real Password Reset Delivery
 SMTP_HOST=smtp.mailtrap.io
@@ -130,7 +128,7 @@ SMTP_PASS=your_smtp_pass
 SMTP_FROM=VidTube Security <noreply@vidtube.com>
 ```
 
-> **Note on Password Reset without SMTP:** If SMTP credentials are not configured, the password reset endpoint safely outputs the generated reset URL directly to the backend development console.
+> **Cloudinary Development Graceful Fallback:** If Cloudinary credentials are not yet populated in `server/.env`, backend endpoints return an informative response and video metadata operations continue without unhandled exceptions.
 
 ### Frontend (`client/.env`)
 ```env
@@ -166,35 +164,39 @@ npm run build
 
 ## 🧪 Testing & Verification
 
-VidTube Phase 2 includes an automated test suite verifying all 18 requirements:
+VidTube maintains automated test suites covering authentication, security, and video management:
 
 ```bash
-# Start backend
-npm run dev:server
+# Run Phase 3 Video Upload & Management test suite (22 tests)
+npm run test:video --workspace=server
 
-# In another terminal, run test suite
-node server/src/tests/auth.test.js
+# Run Phase 2 Authentication & Security test suite (18 tests)
+npm run test:auth --workspace=server
 ```
 
-### Verified Test Cases:
-1. ✅ User registration with strong password & auto-channel creation
-2. ✅ Duplicate email rejection (HTTP 409)
-3. ✅ Duplicate username rejection (HTTP 409)
-4. ✅ Successful login with username/email & bcrypt comparison
-5. ✅ Invalid password rejection (HTTP 401)
-6. ✅ Invalid JWT signature rejection (HTTP 401)
-7. ✅ Expired JWT token handling (HTTP 401)
-8. ✅ Authenticated profile retrieval (`GET /api/auth/me`)
-9. ✅ Unauthorized route protection (`GET /api/users/profile`)
-10. ✅ Profile updates with channel handle synchronization
-11. ✅ Password change with current password verification
-12. ✅ Token invalidation on logout
-13. ✅ Forgot password request with token generation
-14. ✅ Password reset token single-use & reuse prevention (HTTP 400)
-15. ✅ Session token refresh (`POST /api/auth/refresh`)
-16. ✅ Forged refresh token rejection (HTTP 401)
-17. ✅ Database connectivity & Mongoose schema integrity
-18. ✅ Health check endpoint (`GET /api/health`)
+### Verified Phase 3 Test Cases (22/22 Passing):
+1. ✅ Health check endpoint returns healthy and connected database
+2. ✅ Unauthenticated request to `POST /api/videos` rejected with HTTP 401
+3. ✅ Unauthenticated request to upload signature rejected with HTTP 401
+4. ✅ Unauthenticated request to `GET /api/videos/my-videos` rejected with HTTP 401
+5. ✅ User A (Alice) registered with auto-created channel
+6. ✅ User B (Bob) registered for authorization isolation tests
+7. ✅ Authenticated user can request Cloudinary upload signature
+8. ✅ Validation: Missing video title rejected with HTTP 400
+9. ✅ Validation: Invalid visibility setting rejected with HTTP 400
+10. ✅ Validation: Malformed MongoDB ID param rejected with HTTP 400
+11. ✅ Alice creates Public Video metadata (`POST /api/videos`)
+12. ✅ Alice completes video upload: status set to ready & channel `videosCount` incremented
+13. ✅ Alice creates and completes Private Video (visibility: private)
+14. ✅ Alice creates and completes Unlisted Video (visibility: unlisted)
+15. ✅ Public listing includes public video but strictly excludes private and unlisted videos
+16. ✅ Unlisted video accessible directly via link without authentication
+17. ✅ Private video rejected with HTTP 403 for other users/guests, allowed for owner
+18. ✅ Creator dashboard returns all owner videos (public+unlisted+private) and isolates other users
+19. ✅ Non-owner is rejected with HTTP 403 when attempting to update video
+20. ✅ Owner can update video metadata details and custom thumbnail
+21. ✅ Owner can toggle video visibility (private -> public)
+22. ✅ Video deletion enforced: non-owner rejected (403), owner deletes, channel count decrements
 
 ---
 

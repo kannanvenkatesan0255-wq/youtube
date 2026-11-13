@@ -1,6 +1,6 @@
 /**
  * JWT Authentication & Role-Based Authorization Middleware
- * VidTube Platform Architecture - Phase 2
+ * VidTube Platform Architecture - Phase 2 & 3
  */
 const { verifyAccessToken } = require('../utils/token');
 const { ApiError } = require('../utils/apiError');
@@ -64,6 +64,39 @@ const authenticate = async (req, res, next) => {
 };
 
 /**
+ * Optional Authentication: Attaches user if valid token present, otherwise proceeds as guest
+ */
+const optionalAuthenticate = async (req, res, next) => {
+  try {
+    let token = null;
+
+    if (req.cookies && req.cookies.accessToken) {
+      token = req.cookies.accessToken;
+    } else if (
+      req.headers.authorization &&
+      req.headers.authorization.startsWith('Bearer ')
+    ) {
+      token = req.headers.authorization.split(' ')[1];
+    }
+
+    if (token) {
+      try {
+        const decoded = verifyAccessToken(token);
+        const user = await User.findById(decoded.id).populate('channel');
+        if (user && user.accountStatus === 'active') {
+          req.user = user;
+        }
+      } catch (e) {
+        // Ignore invalid/expired token in optional auth
+      }
+    }
+    next();
+  } catch (error) {
+    next();
+  }
+};
+
+/**
  * Role-Based Authorization Guard
  * @param  {...string} roles Allowed roles ('user', 'creator', 'admin')
  */
@@ -85,5 +118,6 @@ const authorize = (...roles) => {
 
 module.exports = {
   authenticate,
+  optionalAuthenticate,
   authorize
 };

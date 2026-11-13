@@ -1,6 +1,6 @@
 /**
  * Core Application Constants
- * VidTube Platform Architecture
+ * VidTube Platform Architecture - Phase 3
  */
 
 const USER_ROLES = Object.freeze({
@@ -15,6 +15,13 @@ const VIDEO_VISIBILITY = Object.freeze({
   PRIVATE: 'private'
 });
 
+const VIDEO_PROCESSING_STATUS = Object.freeze({
+  UPLOADING: 'uploading',
+  PROCESSING: 'processing',
+  READY: 'ready',
+  FAILED: 'failed'
+});
+
 const VIDEO_CATEGORIES = Object.freeze([
   'All',
   'Gaming',
@@ -26,11 +33,20 @@ const VIDEO_CATEGORIES = Object.freeze([
   'Node.js',
   'Podcasts',
   'Tech & Gadgets',
+  'Technology',
   'AI & Machine Learning',
   'News & Politics',
   'Sports',
   'Entertainment',
-  'Science & Education'
+  'Science & Education',
+  'Education',
+  'Film & Animation',
+  'Comedy',
+  'Howto & Style',
+  'Travel & Events',
+  'People & Blogs',
+  'Personal',
+  'Other'
 ]);
 
 const LIKE_TYPES = Object.freeze({
@@ -50,8 +66,8 @@ const NOTIFICATION_TYPES = Object.freeze({
 module.exports = {
   USER_ROLES,
   VIDEO_VISIBILITY,
+  VIDEO_PROCESSING_STATUS,
   VIDEO_CATEGORIES,
   LIKE_TYPES,
   NOTIFICATION_TYPES
 };
-

@@ -18,6 +18,7 @@ import {
   Settings,
   LogOut,
   Tv,
+  Upload,
   ChevronRight
 } from 'lucide-react';
 import { useSidebar } from '../../hooks/useSidebar';
@@ -219,13 +220,14 @@ export const Header = () => {
             {/* If Authenticated: Create Button + Notifications + User Avatar */}
             {isAuthenticated ? (
               <>
-                <button
-                  title="Create"
+                <Link
+                  to="/upload"
+                  title="Create / Upload video"
                   className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-[#0f0f0f] dark:text-[#f1f1f1] text-sm font-medium transition-colors"
                 >
                   <Video className="w-5 h-5 text-[#FF0033]" />
                   <span className="hidden xl:inline">Create</span>
-                </button>
+                </Link>
 
                 <div className="relative">
                   <button
@@ -277,12 +279,20 @@ export const Header = () => {
                       {/* Dropdown Items */}
                       <div className="py-1">
                         <Link
-                          to="/you"
+                          to="/upload"
+                          onClick={() => setIsUserMenuOpen(false)}
+                          className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-700/60 transition"
+                        >
+                          <Upload className="w-5 h-5 text-neutral-500" />
+                          <span>Upload video</span>
+                        </Link>
+                        <Link
+                          to="/studio/videos"
                           onClick={() => setIsUserMenuOpen(false)}
                           className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-700/60 transition"
                         >
                           <Tv className="w-5 h-5 text-neutral-500" />
-                          <span>Your channel</span>
+                          <span>VidTube Studio</span>
                         </Link>
                         <Link
                           to="/profile"
@@ -311,14 +321,23 @@ export const Header = () => {
                 </div>
               </>
             ) : (
-              /* If Guest: YouTube Blue Sign In Button */
-              <Link
-                to="/login"
-                className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-neutral-300 dark:border-neutral-700 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 text-sm font-semibold transition ml-1"
-              >
-                <UserCircle2 className="w-5 h-5" />
-                <span>Sign in</span>
-              </Link>
+              /* If Guest: YouTube Blue Sign In Button + Create link */
+              <>
+                <Link
+                  to="/login"
+                  title="Upload video"
+                  className="hidden sm:flex items-center gap-2 p-2 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 text-[#0f0f0f] dark:text-[#f1f1f1] transition-colors"
+                >
+                  <Video className="w-5 h-5 text-neutral-600 dark:text-neutral-400" />
+                </Link>
+                <Link
+                  to="/login"
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-neutral-300 dark:border-neutral-700 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 text-sm font-semibold transition ml-1"
+                >
+                  <UserCircle2 className="w-5 h-5" />
+                  <span>Sign in</span>
+                </Link>
+              </>
             )}
           </div>
         </div>

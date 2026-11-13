@@ -8,10 +8,10 @@ VidTube is a production-oriented, full-stack video sharing and adaptive streamin
 
 | Phase | Milestone Name | Focus Area | Status |
 |---|---|---|---|
-| **Phase 1** | **Project Architecture & UI Shell** | Foundation, Monorepo, YouTube Exact Shell, MongoDB Setup, Health API | **COMPLETED** |
-| **Phase 2** | **Authentication & Security Engine** | JWT, bcrypt, Refresh Tokens, Cookie Sessions, Cloudinary Auth, Profile | **COMPLETED** |
-| **Phase 3** | **Channel Architecture & Studio Profile** | Channel Customization, Handles, Banners, Avatars, Links, Socials | *Scheduled* |
-| **Phase 4** | **Video Management & Processing Engine** | Long-form Video Uploads, Transcoding, Metadata, Cloudinary Storage | *Scheduled* |
+| **Phase 1** | **Project Architecture & UI Shell** | Foundation, Monorepo, YouTube Exact Shell, MongoDB Setup, Health API | **COMPLETED** (`d342b80`) |
+| **Phase 2** | **Authentication & Security Engine** | JWT, bcrypt, Refresh Tokens, Cookie Sessions, Cloudinary Auth, Profile | **COMPLETED** (`05c768f`) |
+| **Phase 3** | **Video Upload, Storage & Management** | Direct Signed Cloudinary Uploads, Metadata, Privacy, Creator Studio | **COMPLETED** |
+| **Phase 4** | **Video Streaming & Custom Video Player** | HTML5 Custom Video Player, Quality Selector, Theater Mode, Fullscreen | *Scheduled* |
 | **Phase 5** | **VidTube Shorts & Vertical Player** | 9:16 Vertical Video Engine, Infinite Scroll, Sound Overlay, Gestures | *Scheduled* |
 | **Phase 6** | **Engagement & Community System** | Nested Comment Threads, Like/Dislike, Mentions, Real-Time Badges | *Scheduled* |
 | **Phase 7** | **Subscriptions, Playlists & Library** | Channel Subscriptions, Bell Notifications, Custom Playlists, Watch Later | *Scheduled* |
@@ -44,18 +44,30 @@ VidTube is a production-oriented, full-stack video sharing and adaptive streamin
 - **Frontend Authentication Architecture:** Centralized `AuthContext`, Axios interceptors, `ProtectedRoute`, `GuestRoute`, YouTube-style Sign-In (`/login`), Sign-Up (`/register`), Forgot Password (`/forgot-password`), Reset Password (`/reset-password/:token`), and Profile & Settings (`/profile`) pages.
 - **Security Hardening:** Rate limiting (`express-rate-limit`), Helmet security headers, CORS with credentials, mass-assignment guards.
 
-### Phase 3: Channel Architecture & Creator Profile (Next)
-- Channel model linking with User accounts.
-- Unique channel handles (`@handle`).
-- Channel banner and avatar uploads via Cloudinary.
-- Channel tabs: Home, Videos, Shorts, Playlists, About.
-- Subscribe / Unsubscribe counter logic.
+### Phase 3: Video Upload, Storage & Management Engine (Completed)
+- **Direct Cloudinary Signed Upload:** Server generates secure timestamped signatures (`POST /api/videos/upload-signature`); browser streams directly to Cloudinary without Node process bottleneck.
+- **Video Metadata Registration & Finalization:** `POST /api/videos` creates draft; `POST /api/videos/:id/complete` stores final media URL, format, duration, dimensions, public ID, and auto-increments creator channel `videosCount`.
+- **Visibility & Privacy Engine:**
+  - `public`: Accessible to everyone and queried in public listings.
+  - `unlisted`: Excluded from public search/listing feeds, accessible via direct URL link.
+  - `private`: Strictly restricted to video owner and administrators (HTTP 403 for unauthorized users).
+- **Video Modification & Deletion:**
+  - `PATCH /api/videos/:id`: Updates title, description, category, tags.
+  - `PATCH /api/videos/:id/thumbnail`: Updates custom thumbnail.
+  - `PATCH /api/videos/:id/visibility`: Toggles public / unlisted / private visibility.
+  - `DELETE /api/videos/:id`: Purges asset from Cloudinary storage, removes MongoDB document, decrements channel `videosCount`.
+- **Frontend Creator Studio:**
+  - Multi-step Upload Page (`/upload`) with drag-and-drop, preview, custom thumbnail, category chips, tags, visibility options, real-time progress, and cancellation.
+  - Creator Videos Dashboard (`/studio/videos` / `/my-videos`) with search, filter by visibility, sort, edit details modal, and delete confirmation dialog.
+  - Header "+ Create" button dynamically routes to `/upload` (or `/login`).
+  - Homepage (`/`) integrates public videos with seamless fallback to sample showcase videos.
 
-### Phase 4: Video Management & Processing
-- Video upload endpoint using multer and Cloudinary SDK.
-- Video metadata editing (title, description, category, tags, visibility: public/private/unlisted).
-- Thumbnail generation and custom thumbnail uploads.
-- Video detail watch page with custom HTML5/Video.js player, theatre mode, and fullscreen.
+### Phase 4: Video Streaming & Custom Video Player (Next)
+- Custom HTML5 Video Player with YouTube controls.
+- Play, pause, seek, volume, speed control (0.25x to 2x).
+- Theater mode, mini-player, and fullscreen modes.
+- Keyboard shortcuts (Space/K for play/pause, J/L for 10s skip, M for mute, F for fullscreen).
+- Video details view, channel subscribe card, and description expand/collapse.
 
 ### Phase 5: VidTube Shorts
 - Vertical video upload pipeline (max 60 seconds).
@@ -68,29 +80,3 @@ VidTube is a production-oriented, full-stack video sharing and adaptive streamin
 - Pinning comments by channel owners.
 - Polymorphic Like/Dislike system for videos, shorts, and comments.
 - Sentiment counting and optimistic UI updates.
-
-### Phase 7: Subscriptions, Playlists & Personal Library
-- Channel subscription management with notification tiers (All, Personalized, None).
-- Subscriptions feed aggregating newly published videos from subscribed creators.
-- Custom playlists (Public, Private, Unlisted) and reordering.
-- "Watch Later" and "Liked Videos" automated system playlists.
-
-### Phase 8: Search Engine & Explore Feed
-- Server-side full-text search indexing on video titles, descriptions, and tags.
-- Search suggestion autocomplete and recent searches history.
-- Search filters: upload date, duration (under 4m, 4-20m, over 20m), type (video, channel, playlist).
-- Explore tabs: Trending, Music, Gaming, Sports, Podcasts.
-
-### Phase 9: Watch History & Creator Analytics Studio
-- Incremental watch progress recording and resume playback.
-- Clear and pause watch history.
-- Creator Studio Dashboard:
-  - Total channel views, watch time hours, subscriber count.
-  - Video performance graphs, click-through rates, top traffic sources.
-  - Video manager table with sorting and filtering.
-
-### Phase 10: Adaptive HLS Streaming & Production Optimization
-- Adaptive Bitrate Streaming (HLS: 1080p, 720p, 480p, 360p).
-- Redis caching for high-throughput endpoints (trending, homepage feeds).
-- End-to-end load testing and accessibility auditing.
-- Production deployment configuration (Vercel/Netlify for client, Render/Railway/AWS for backend, MongoDB Atlas cluster).

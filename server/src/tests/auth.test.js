@@ -9,8 +9,11 @@ const User = require('../models/User');
 const Channel = require('../models/Channel');
 const { config } = require('../config/env');
 
-const BASE_URL = 'http://localhost:5000/api';
-const client = axios.create({
+const app = require('../app');
+
+let BASE_URL = 'http://localhost:5000/api';
+let serverInstance = null;
+let client = axios.create({
   baseURL: BASE_URL,
   validateStatus: () => true
 });
@@ -38,6 +41,21 @@ async function runTestSuite() {
   } catch (err) {
     console.error('Cannot connect to MongoDB. Is your database running?');
     process.exit(1);
+  }
+
+  // Check if server is running on port 5000, otherwise spin up ephemeral listener
+  try {
+    const probe = await client.get('/health', { timeout: 1000 });
+    if (probe.status !== 200) throw new Error('Not running');
+  } catch {
+    await new Promise((resolve) => {
+      serverInstance = app.listen(0, () => {
+        const port = serverInstance.address().port;
+        BASE_URL = `http://localhost:${port}/api`;
+        client = axios.create({ baseURL: BASE_URL, validateStatus: () => true });
+        resolve();
+      });
+    });
   }
 
   const testUser = {
@@ -193,6 +211,9 @@ async function runTestSuite() {
   const healthRes = await client.get('/health');
   report(18, 'Backend health endpoint (/api/health)', healthRes.status === 200 && healthRes.data.status === 'healthy', `Status: ${healthRes.data?.status}`);
 
+  if (serverInstance) {
+    await new Promise((resolve) => serverInstance.close(resolve));
+  }
   await mongoose.disconnect();
 
   console.log('\n===============================================================');

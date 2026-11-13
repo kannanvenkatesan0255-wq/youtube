@@ -1,6 +1,6 @@
 /**
  * Environment Configuration
- * VidTube Platform
+ * VidTube Platform Architecture - Phase 3
  */
 const dotenv = require('dotenv');
 const path = require('path');
@@ -21,11 +21,36 @@ const config = {
   jwtRefreshSecret: process.env.JWT_REFRESH_SECRET || 'vidtube_dev_refresh_secret_key_change_in_production_2026',
   jwtRefreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
 
-  // Cloudinary
+  // Cloudinary Media Storage
   cloudinary: {
     cloudName: process.env.CLOUDINARY_CLOUD_NAME || '',
     apiKey: process.env.CLOUDINARY_API_KEY || '',
-    apiSecret: process.env.CLOUDINARY_API_SECRET || ''
+    apiSecret: process.env.CLOUDINARY_API_SECRET || '',
+    isConfigured: Boolean(
+      process.env.CLOUDINARY_CLOUD_NAME &&
+      process.env.CLOUDINARY_API_KEY &&
+      process.env.CLOUDINARY_API_SECRET
+    )
+  },
+
+  // Upload Limits (configurable via environment)
+  uploads: {
+    maxVideoSizeMB: parseInt(process.env.MAX_VIDEO_SIZE_MB, 10) || 100, // 100 MB default
+    maxThumbnailSizeMB: parseInt(process.env.MAX_THUMBNAIL_SIZE_MB, 10) || 5, // 5 MB default
+    allowedVideoMimeTypes: [
+      'video/mp4',
+      'video/webm',
+      'video/ogg',
+      'video/quicktime',
+      'video/x-msvideo',
+      'video/x-matroska'
+    ],
+    allowedThumbnailMimeTypes: [
+      'image/jpeg',
+      'image/png',
+      'image/webp',
+      'image/jpg'
+    ]
   },
 
   // SMTP Email Configuration (Password recovery)

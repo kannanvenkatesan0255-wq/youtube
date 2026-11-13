@@ -106,3 +106,41 @@ VidTube strictly enforces YouTube's design tokens:
 - Hover state: `#272727`
 - Border: `#303030`
 - Accent Red: `#FF0033`
+
+---
+
+## 5. Phase 3 Video Upload & Cloud Storage Architecture
+
+### Direct Cloudinary Signed Ingestion Flow
+
+```
+[Browser Client]                                  [VidTube API Server]                    [Cloudinary CDN]
+       │                                                   │                                     │
+       │ 1. POST /api/videos/upload-signature ────────────>│                                     │
+       │    (Authenticated JWT)                            │ (Signs timestamp & folder           │
+       │                                                   │  using CLOUDINARY_API_SECRET)       │
+       │<──────────────────────────────────────────────────│                                     │
+       │    Returns { signature, timestamp, apiKey }       │                                     │
+       │                                                   │                                     │
+       │ 2. POST /api/videos (Create draft record) ───────>│                                     │
+       │<──────────────────────────────────────────────────│                                     │
+       │    Returns { _id, processingStatus: 'uploading' } │                                     │
+       │                                                   │                                     │
+       │ 3. Direct Binary Multipart POST ───────────────────────────────────────────────────────>│
+       │    (Real-time upload progress, cancellable via AbortController)                         │
+       │<────────────────────────────────────────────────────────────────────────────────────────│
+       │    Returns { secure_url, public_id, duration, format, width, height }                   │
+       │                                                   │                                     │
+       │ 4. POST /api/videos/:id/complete ────────────────>│                                     │
+       │    (Owner verification, status -> 'ready',        │                                     │
+       │     Channel.videosCount incremented)              │                                     │
+       │<──────────────────────────────────────────────────│                                     │
+       │    Returns finalized video document               │                                     │
+```
+
+### Access Control Rules
+- **Public**: Included in `GET /api/videos` query where `{ visibility: 'public', processingStatus: 'ready' }`.
+- **Unlisted**: Excluded from public query; accessible via `GET /api/videos/:id` to any caller without authentication.
+- **Private**: Excluded from public query; accessible via `GET /api/videos/:id` only if the authenticated user is the video owner or has an admin role. Returns HTTP 403 Forbidden to all other users.
+- **Modifications & Deletions**: Enforce strict ownership checks (`video.owner.equals(req.user._id)`). Unauthorized attempts return HTTP 403. Deletion triggers `cloudinary.uploader.destroy(publicId)` and decrements channel `videosCount`.
+

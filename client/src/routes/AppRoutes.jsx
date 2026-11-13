@@ -1,6 +1,6 @@
 /**
  * VidTube Client Route Definitions
- * Phase 2 - Integrated Authentication, Protected & Guest Routes
+ * Phase 3 - Video Upload, Storage & Management Engine
  */
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
@@ -11,6 +11,8 @@ import RegisterPage from '../pages/auth/RegisterPage';
 import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage';
 import ResetPasswordPage from '../pages/auth/ResetPasswordPage';
 import ProfilePage from '../pages/account/ProfilePage';
+import VideoUploadPage from '../pages/studio/VideoUploadPage';
+import MyVideosPage from '../pages/studio/MyVideosPage';
 import PlaceholderPage from '../pages/PlaceholderPage';
 import NotFoundPage from '../pages/NotFoundPage';
 import { ProtectedRoute, GuestRoute } from '../components/navigation/RouteGuards';
@@ -74,13 +76,38 @@ export const AppRoutes = () => {
           }
         />
 
-        {/* Phase Roadmap Placeholders */}
+        {/* Phase 3: Video Upload & Creator Management */}
+        <Route
+          path="/upload"
+          element={
+            <ProtectedRoute>
+              <VideoUploadPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/studio/videos"
+          element={
+            <ProtectedRoute>
+              <MyVideosPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/my-videos"
+          element={
+            <ProtectedRoute>
+              <MyVideosPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Upcoming Phase Roadmap Placeholders */}
         <Route path="/shorts" element={<PlaceholderPage title="VidTube Shorts" phase={5} />} />
         <Route path="/subscriptions" element={<PlaceholderPage title="Subscriptions Feed" phase={7} />} />
         <Route path="/history" element={<PlaceholderPage title="Watch History" phase={9} />} />
         <Route path="/playlists" element={<PlaceholderPage title="Your Playlists" phase={7} />} />
-        <Route path="/you" element={<PlaceholderPage title="Your Channel & Profile" phase={3} />} />
-        <Route path="/studio/videos" element={<PlaceholderPage title="VidTube Studio — Video Manager" phase={4} />} />
+        <Route path="/you" element={<PlaceholderPage title="Your Channel & Profile" phase={4} />} />
         <Route path="/explore/:category" element={<PlaceholderPage title="Explore Section" phase={8} />} />
 
         {/* Fallback 404 */}
