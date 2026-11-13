@@ -4,15 +4,20 @@
  */
 const { Router } = require('express');
 const healthRoutes = require('./health.routes');
+const authRoutes = require('./auth.routes');
+const userRoutes = require('./user.routes');
 
 const router = Router();
 
 // Mount active Health Check route
 router.use('/health', healthRoutes);
 
+// Mount active Phase 2 Authentication & User Account routes
+router.use('/auth', authRoutes);
+router.use('/users', userRoutes);
+
 /**
  * Architectural Module Placeholders for Subsequent Phases
- * In Phase 1, these define the REST boundaries and respond with standard metadata.
  */
 const createPhasePlaceholder = (moduleName, targetPhase) => {
   const subRouter = Router();
@@ -30,9 +35,7 @@ const createPhasePlaceholder = (moduleName, targetPhase) => {
   return subRouter;
 };
 
-// Register architectural route boundaries
-router.use('/auth', createPhasePlaceholder('Authentication', 2));
-router.use('/users', createPhasePlaceholder('Users', 2));
+// Register architectural route boundaries for upcoming phases
 router.use('/channels', createPhasePlaceholder('Channels', 3));
 router.use('/videos', createPhasePlaceholder('Videos', 4));
 router.use('/shorts', createPhasePlaceholder('Shorts', 5));
@@ -47,4 +50,3 @@ router.use('/analytics', createPhasePlaceholder('Analytics', 9));
 router.use('/admin', createPhasePlaceholder('Administration', 10));
 
 module.exports = router;
-

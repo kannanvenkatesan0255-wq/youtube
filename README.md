@@ -3,7 +3,7 @@
 <div align="center">
   <img src="client/public/vidtube-logo.svg" alt="VidTube Logo" width="120" />
   <h3>A Production-Oriented YouTube Replica Built with Modern Full-Stack Technologies</h3>
-  <p>Phase 1 Foundation: Architecture, Monorepo Setup, Express REST API, MongoDB Mongoose Schemas & YouTube Exact UI Shell</p>
+  <p>Phase 2 Active: Robust Authentication, Security Engine, JWT HttpOnly Cookies, Password Recovery & YouTube UI</p>
 
   [![React](https://img.shields.io/badge/React-19.0-61DAFB?logo=react&logoColor=black)](https://react.dev/)
   [![Vite](https://img.shields.io/badge/Vite-6.1-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
@@ -11,175 +11,128 @@
   [![Node.js](https://img.shields.io/badge/Node.js-24.x-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
   [![Express.js](https://img.shields.io/badge/Express-4.21-000000?logo=express&logoColor=white)](https://expressjs.com/)
   [![MongoDB](https://img.shields.io/badge/MongoDB-Atlas%20%2F%20Mongoose-47A248?logo=mongodb&logoColor=white)](https://mongoosejs.com/)
+  [![JWT](https://img.shields.io/badge/Auth-JWT%20%2B%20bcrypt-000000?logo=json-web-tokens&logoColor=white)](https://jwt.io/)
 </div>
 
 ---
 
-## 📌 Project Introduction
+## 📌 Project Overview
 
-**VidTube** is a full-scale video sharing and streaming web platform developed as an engineering internship capstone project. The project is designed to meticulously replicate the familiar user interface and design patterns of **YouTube**, utilizing clean architecture, component reusability, and modern full-stack practices.
+**VidTube** is a professional, full-scale video sharing and streaming web platform designed as an internship capstone project. The project meticulously reproduces the familiar user interface, design patterns, and engineering quality of **YouTube**.
 
-Phase 1 establishes the bedrock of the application: a production-grade monorepo, robust Express REST backend, Mongoose schema modeling for all future features, and a high-fidelity YouTube UI shell matching YouTube's exact proportions, typography, and color tokens.
-
----
-
-## 🎯 Project Objectives
-
-Across 10 structured development phases, VidTube will implement:
-- **Long-Form Video Streaming**: Video uploads, transcoding, thumbnail management, and player controls.
-- **VidTube Shorts**: 9:16 vertical video player with mobile swipe gestures and audio attribution.
-- **Engagement Engine**: Threaded nested comments, polymorphic like/dislike interactions, and channel subscriptions.
-- **Channel & Creator Studio**: Customizable channel pages, banner/avatar management, handles (`@handle`), and real-time viewership analytics.
-- **Adaptive Streaming**: HLS adaptive bitrate streaming with Cloudinary integration.
-- **Discoverability**: Full-text search with filters, autocomplete suggestions, and category feeds.
+### Phase Status:
+- **Phase 1: Architecture & UI Shell** — ✅ COMPLETED
+- **Phase 2: Authentication & Security Engine** — ✅ COMPLETED
+- **Phases 3–10** — Scheduled per [PROJECT_ROADMAP.md](docs/PROJECT_ROADMAP.md)
 
 ---
 
-## 🛠️ Technology Stack
+## 🔐 Phase 2 — Authentication & Security Architecture
 
-### Frontend
-- **Framework**: React 19 (Hooks, Suspense, Concurrent rendering)
-- **Bundler & Tooling**: Vite 6
-- **Styling**: Tailwind CSS 3.4 with custom YouTube design tokens
-- **Routing**: React Router DOM 7
-- **HTTP Client**: Axios with configured baseURL and request/response interceptors
-- **Icons**: Lucide React
-- **Typography**: Roboto font family
+Phase 2 introduces a production-ready authentication and account security engine:
 
-### Backend
-- **Runtime**: Node.js (v24+)
-- **Server Framework**: Express.js 4.21
-- **Architecture**: Modular RESTful API with layered controllers, services, and routes
-- **Database ODM**: Mongoose 8.9 connecting to MongoDB Atlas
-- **Security & Headers**: Helmet, CORS, centralized error handling
-- **Logging**: Morgan HTTP logger and structured console logger
-- **Media Architecture**: Cloudinary SDK configured for video and asset storage
+### 1. Token Strategy & Session Management
+- **Short-Lived Access Tokens (15 min):** Signed with HMAC SHA-256 (`JWT_SECRET`), contains `{ id, role, email, username }`.
+- **Long-Lived Refresh Tokens (7 days):** Stored in MongoDB and signed with `JWT_REFRESH_SECRET`. Allows seamless token rotation without forcing user logouts.
+- **HttpOnly Cookies:** Delivered with `HttpOnly`, `SameSite: 'lax'`, and `Secure: true` in production to mitigate Cross-Site Scripting (XSS) risks.
+- **Authorization Header Support:** Also supports `Bearer <accessToken>` for external or programmatic API access.
 
-### Root & Monorepo
-- **Workspaces**: npm Workspaces (`client`, `server`)
-- **Process Orchestration**: Concurrently
+### 2. Automatic Channel Provisioning
+- Upon user registration, a default creator **Channel** is automatically provisioned and linked to the account:
+  - Channel name: user's display name
+  - Channel handle: unique `@username`
+  - Channel owner: user's ObjectId
+  - Avatar: synchronized with the user profile picture
 
----
+### 3. Password Recovery Engine
+- **Cryptographically Secure Tokens:** 32-byte crypto random tokens, hashed with SHA-256 for database storage.
+- **Single-Use Enforcement:** Tokens expire after 15 minutes and are automatically invalidated upon successful password change.
+- **Anti-Enumeration Security:** The forgot-password endpoint always returns a generic success message, preventing malicious attackers from guessing registered user email addresses.
+- **SMTP & Development Fallback:** Full SMTP delivery support via Nodemailer, with an automatic development mode that outputs reset links to server logs when SMTP credentials are not yet configured.
 
-## 📐 Architecture & Folder Structure
-
-```
-VidTube/
-├── client/                     # Frontend Application (React 19 + Vite)
-│   ├── public/                 # Static assets & SVG icons
-│   ├── src/
-│   │   ├── assets/             # Images & design assets
-│   │   ├── components/
-│   │   │   ├── common/         # Button, Input, Avatar, Badge, Spinner, Skeleton, ErrorBoundary, Logo
-│   │   │   ├── layout/         # Header, Sidebar, MiniSidebar, MobileNav
-│   │   │   ├── navigation/     # SidebarItem
-│   │   │   └── video/          # CategoryChips, VideoCard, VideoGrid
-│   │   ├── context/            # ThemeContext, SidebarContext
-│   │   ├── hooks/              # useTheme, useSidebar, useHealthCheck
-│   │   ├── layouts/            # MainLayout
-│   │   ├── pages/              # HomePage, PlaceholderPage, NotFoundPage
-│   │   ├── routes/             # AppRoutes (declarative routing)
-│   │   ├── services/           # Axios instance & healthService
-│   │   ├── styles/             # index.css (custom scrollbars & directives)
-│   │   ├── utils/              # formatters, constants, sampleData
-│   │   ├── App.jsx             # Root React tree & providers
-│   │   └── main.jsx            # React 19 DOM mount
-│   ├── .env.example
-│   ├── package.json
-│   ├── postcss.config.js
-│   ├── tailwind.config.js
-│   └── vite.config.js
-│
-├── server/                     # Backend REST API (Node.js + Express)
-│   ├── src/
-│   │   ├── config/             # env.js, db.js, cloudinary.js
-│   │   ├── constants/          # statusCodes.js, appConstants.js
-│   │   ├── controllers/        # health.controller.js
-│   │   ├── middleware/         # errorHandler.js, notFound.js, requestLogger.js
-│   │   ├── models/             # 10 Mongoose schemas (User, Channel, Video, Short, Comment, Like, Subscription, Playlist, Notification, WatchHistory)
-│   │   ├── routes/             # api.routes.js, health.routes.js
-│   │   ├── services/           # health.service.js
-│   │   ├── utils/              # apiResponse.js, apiError.js, logger.js
-│   │   ├── validators/         # common.validator.js
-│   │   ├── app.js              # Express app setup & middleware
-│   │   └── server.js           # Server listen & graceful shutdown
-│   ├── .env.example
-│   └── package.json
-│
-├── docs/                       # Project Documentation & Roadmaps
-│   ├── PROJECT_ROADMAP.md      # Detailed 10-phase master roadmap
-│   └── ARCHITECTURE.md         # Technical architecture documentation
-│
-├── .gitignore
-├── README.md
-└── package.json                # Monorepo scripts
-```
+### 4. Security Hardening
+- **Rate Limiting (`express-rate-limit`):**
+  - Registration: 10 accounts / hour per IP
+  - Login: 10 attempts / 15 minutes per IP
+  - Password Reset: 5 requests / hour per IP
+  - Auth General: 100 requests / 15 minutes per IP
+- **Helmet Headers:** Secure HTTP headers configured.
+- **CORS Credentials:** Whitelist verification with `credentials: true`.
+- **Mass Assignment Protection:** Regular profile updates cannot alter `role`, `accountStatus`, or `isVerified`.
+- **Safe Serialization:** Sensitive fields (`passwordHash`, `refreshToken`, `passwordResetToken`, `passwordResetExpires`) are automatically stripped from JSON responses via Mongoose `toJSON` transforms.
 
 ---
 
-## 🎨 YouTube Exact UI Design System
+## 📡 API Specification — Authentication & Users
 
-| Design Element | Light Theme | Dark Theme |
-|---|---|---|
-| **Background** | `#FFFFFF` | `#0F0F0F` |
-| **Primary Text** | `#0F0F0F` | `#F1F1F1` |
-| **Secondary Text** | `#606060` | `#AAAAAA` |
-| **Hover Surfaces** | `#F2F2F2` | `#272727` |
-| **Borders** | `#E5E5E5` | `#303030` |
-| **Accent Red** | `#FF0033` | `#FF0033` |
+### Authentication Endpoints (`/api/auth`)
 
-### Responsive Layout States
-- **Desktop (>= 1024px)**: Fixed 56px header, sticky category chips, collapsible 240px sidebar or 72px mini sidebar, 3 to 4 column video grid.
-- **Tablet (640px - 1023px)**: 2 column video grid, collapsed mini sidebar, compact header.
-- **Mobile (< 640px)**: Single column full-width video cards, mobile search overlay, hamburger drawer navigation, bottom navigation bar (`Home`, `Shorts`, `Create`, `Subscriptions`, `You`).
+| Method | Endpoint | Description | Auth Required | Rate Limit |
+|---|---|---|---|---|
+| `POST` | `/api/auth/register` | Register user & auto-create default channel | No | 10 / hour |
+| `POST` | `/api/auth/login` | Authenticate with email/username + password | No | 10 / 15 min |
+| `POST` | `/api/auth/logout` | Invalidate session & clear cookies | No / Yes | Standard |
+| `GET` | `/api/auth/me` | Fetch currently authenticated user session | **Yes** | Standard |
+| `POST` | `/api/auth/refresh` | Rotate access token via refresh token | No (Cookie) | 100 / 15 min |
+| `POST` | `/api/auth/forgot-password` | Request password reset email | No | 5 / hour |
+| `POST` | `/api/auth/reset-password` | Set new password with valid token | No | 5 / hour |
+
+### User Account Endpoints (`/api/users`)
+
+| Method | Endpoint | Description | Auth Required |
+|---|---|---|---|
+| `GET` | `/api/users/profile` | Get current user profile and linked channel | **Yes** |
+| `PATCH` | `/api/users/profile` | Update permitted profile fields (`name`, `username`) | **Yes** |
+| `POST` | `/api/users/change-password` | Change password (verifies current password) | **Yes** |
+| `PATCH` | `/api/users/avatar` | Update user and channel avatar URL | **Yes** |
 
 ---
 
-## 🚀 Installation & Setup
+## 🎨 Frontend Authentication Pages & Architecture
 
-### Prerequisites
-- Node.js (v18.x or v20.x or v24.x recommended)
-- npm (v9+ or v11+)
-- Git
-- Optional: Local MongoDB instance or free MongoDB Atlas account
+All authentication flows are styled strictly to reproduce the YouTube/Google account visual identity:
 
-### 1. Clone the Repository
-```bash
-git clone https://github.com/kannanvenkatesan0255-wq/youtube.git
-cd youtube
-```
+- **Sign In (`/login`):** Centered card, email/username input, show/hide password toggle, remember me checkbox, forgot password link, inline validation, and redirect after sign-in.
+- **Sign Up (`/register`):** Full name, username, email, password, confirm password, interactive `PasswordStrength` checklist meter, terms acceptance, auto-channel preview.
+- **Forgot Password (`/forgot-password`):** Email input with clear anti-enumeration feedback and instructions.
+- **Reset Password (`/reset-password/:token`):** Token validation from URL, password strength meter, confirm password, auto-redirect on completion.
+- **Account Settings & Profile (`/profile`):** User avatar preview and quick preset avatars, editable display name and handle, password change form, and sign-out button.
+- **Header Auth Integration:** Displays user's actual profile avatar when logged in with a YouTube dropdown menu (Your Channel, Settings, Sign Out). When logged out, displays YouTube's blue outlined "Sign In" pill.
+- **Route Guards:**
+  - `<ProtectedRoute>`: Restricts `/profile` and `/settings` to authenticated users.
+  - `<GuestRoute>`: Redirects already logged-in users away from `/login`, `/register`, and `/forgot-password`.
 
-### 2. Install All Dependencies
-From the repository root, install workspace dependencies:
-```bash
-npm install
-```
+---
 
-### 3. Environment Configuration
+## 🛠️ Environment Configuration
 
-#### Backend Configuration:
-Copy `server/.env.example` to `server/.env`:
-```bash
-cp server/.env.example server/.env
-```
-Default values inside `server/.env`:
+### Backend (`server/.env`)
 ```env
 PORT=5000
 NODE_ENV=development
 MONGODB_URI=mongodb://localhost:27017/vidtube
-JWT_SECRET=your_secure_secret_key_2026
+JWT_SECRET=your_secure_access_token_secret
+JWT_EXPIRES_IN=15m
+JWT_REFRESH_SECRET=your_secure_refresh_token_secret
+JWT_REFRESH_EXPIRES_IN=7d
 CLIENT_URL=http://localhost:5173
+
+# Optional: Cloudinary Storage (Phase 4)
 CLOUDINARY_CLOUD_NAME=your_cloud_name
 CLOUDINARY_API_KEY=your_api_key
 CLOUDINARY_API_SECRET=your_api_secret
+
+# Optional: SMTP Email Service for Real Password Reset Delivery
+SMTP_HOST=smtp.mailtrap.io
+SMTP_PORT=587
+SMTP_USER=your_smtp_user
+SMTP_PASS=your_smtp_pass
+SMTP_FROM=VidTube Security <noreply@vidtube.com>
 ```
 
-#### Frontend Configuration:
-Copy `client/.env.example` to `client/.env`:
-```bash
-cp client/.env.example client/.env
-```
-Default value inside `client/.env`:
+> **Note on Password Reset without SMTP:** If SMTP credentials are not configured, the password reset endpoint safely outputs the generated reset URL directly to the backend development console.
+
+### Frontend (`client/.env`)
 ```env
 VITE_API_BASE_URL=http://localhost:5000/api
 ```
@@ -188,84 +141,62 @@ VITE_API_BASE_URL=http://localhost:5000/api
 
 ## ⚡ Running the Application
 
-### Option A: Run Both Services Concurrently (Recommended)
-From the repository root:
+### Start Both Services Concurrently:
 ```bash
 npm run dev
 ```
-This launches:
-- **Backend**: `http://localhost:5000` (Nodemon auto-reload)
-- **Frontend**: `http://localhost:5173` (Vite HMR)
+- **Backend API:** `http://localhost:5000`
+- **Frontend App:** `http://localhost:5173`
 
-### Option B: Run Services Individually
-
-#### Start Backend Only:
+### Run Services Individually:
 ```bash
+# Start backend only
 npm run dev:server
-# or
-cd server && npm run dev
-```
 
-#### Start Frontend Only:
-```bash
+# Start frontend only
 npm run dev:client
-# or
-cd client && npm run dev
 ```
 
-### Option C: Production Build
+### Production Build:
 ```bash
 npm run build
 ```
-Build output is generated inside `client/dist/`.
 
 ---
 
-## 📡 API Information & Endpoints
+## 🧪 Testing & Verification
 
-### Health Check Endpoint
-```http
-GET /api/health
+VidTube Phase 2 includes an automated test suite verifying all 18 requirements:
+
+```bash
+# Start backend
+npm run dev:server
+
+# In another terminal, run test suite
+node server/src/tests/auth.test.js
 ```
 
-**Response Format:**
-```json
-{
-  "success": true,
-  "message": "VidTube API is running",
-  "status": "healthy",
-  "timestamp": "2026-11-13T05:27:24.611Z",
-  "environment": "development",
-  "uptimeSeconds": 42,
-  "database": {
-    "status": "connected",
-    "connected": true
-  },
-  "version": "1.0.0"
-}
-```
-
-### Architectural REST Route Boundaries (Prepared for Phases 2–10)
-- `/api/auth` — User Authentication & JWT session endpoints (Phase 2)
-- `/api/users` — User profiles & account settings (Phase 2)
-- `/api/channels` — Channel metadata, customization, and handles (Phase 3)
-- `/api/videos` — Video uploads, details, and streaming endpoints (Phase 4)
-- `/api/shorts` — Vertical Shorts streaming and interactions (Phase 5)
-- `/api/comments` — Threaded video discussions (Phase 6)
-- `/api/likes` — Like/dislike reactions (Phase 6)
-- `/api/subscriptions` — Channel subscriptions & notifications (Phase 7)
-- `/api/playlists` — Custom playlists & library (Phase 7)
-- `/api/search` — Full-text search and query suggestions (Phase 8)
-- `/api/notifications` — Real-time event notifications (Phase 8)
-- `/api/history` — Watch history tracking & resume playback (Phase 9)
-- `/api/analytics` — Creator Studio metrics (Phase 9)
+### Verified Test Cases:
+1. ✅ User registration with strong password & auto-channel creation
+2. ✅ Duplicate email rejection (HTTP 409)
+3. ✅ Duplicate username rejection (HTTP 409)
+4. ✅ Successful login with username/email & bcrypt comparison
+5. ✅ Invalid password rejection (HTTP 401)
+6. ✅ Invalid JWT signature rejection (HTTP 401)
+7. ✅ Expired JWT token handling (HTTP 401)
+8. ✅ Authenticated profile retrieval (`GET /api/auth/me`)
+9. ✅ Unauthorized route protection (`GET /api/users/profile`)
+10. ✅ Profile updates with channel handle synchronization
+11. ✅ Password change with current password verification
+12. ✅ Token invalidation on logout
+13. ✅ Forgot password request with token generation
+14. ✅ Password reset token single-use & reuse prevention (HTTP 400)
+15. ✅ Session token refresh (`POST /api/auth/refresh`)
+16. ✅ Forged refresh token rejection (HTTP 401)
+17. ✅ Database connectivity & Mongoose schema integrity
+18. ✅ Health check endpoint (`GET /api/health`)
 
 ---
 
 ## 🔗 Official Repository
-**GitHub**: [https://github.com/kannanvenkatesan0255-wq/youtube.git](https://github.com/kannanvenkatesan0255-wq/youtube.git)
-
----
-
-## 📄 License & Attribution
-Developed for educational internship purposes. VidTube features an original visual brand identity inspired by the familiar user experience of modern video platforms.
+[https://github.com/kannanvenkatesan0255-wq/youtube.git](https://github.com/kannanvenkatesan0255-wq/youtube.git)

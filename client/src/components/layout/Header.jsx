@@ -1,8 +1,9 @@
 /**
  * VidTube Main Header Navigation
- * Exact YouTube layout and responsiveness
+ * Exact YouTube layout, responsive search, theme toggling, and user auth state
  */
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Menu,
   Search,
@@ -12,11 +13,17 @@ import {
   Sun,
   Moon,
   ArrowLeft,
-  X
+  X,
+  UserCircle2,
+  Settings,
+  LogOut,
+  Tv,
+  ChevronRight
 } from 'lucide-react';
 import { useSidebar } from '../../hooks/useSidebar';
 import { useTheme } from '../../hooks/useTheme';
 import { useHealthCheck } from '../../hooks/useHealthCheck';
+import { useAuth } from '../../hooks/useAuth';
 import Logo from '../common/Logo';
 import Avatar from '../common/Avatar';
 import { NotificationBadge } from '../common/Badge';
@@ -25,10 +32,26 @@ export const Header = () => {
   const { toggleSidebar } = useSidebar();
   const { isDark, toggleTheme } = useTheme();
   const { isConnected } = useHealthCheck();
+  const { user, channel, isAuthenticated, logout } = useAuth();
+  const navigate = useNavigate();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isMobileSearchActive, setIsMobileSearchActive] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+
+  const userMenuRef = useRef(null);
+
+  // Close user dropdown menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -39,6 +62,12 @@ export const Header = () => {
 
   const handleClearSearch = () => {
     setSearchQuery('');
+  };
+
+  const handleLogout = async () => {
+    setIsUserMenuOpen(false);
+    await logout();
+    navigate('/');
   };
 
   return (
@@ -152,7 +181,7 @@ export const Header = () => {
             </button>
           </div>
 
-          {/* Right section: Actions, Theme, Status & User Avatar */}
+          {/* Right section: Actions, Theme, Status & User Auth */}
           <div className="flex items-center gap-1 sm:gap-2">
             {/* Mobile Search Button */}
             <button
@@ -187,39 +216,110 @@ export const Header = () => {
               {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>
 
-            {/* Create / Upload Button */}
-            <button
-              title="Create"
-              className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-[#0f0f0f] dark:text-[#f1f1f1] text-sm font-medium transition-colors"
-            >
-              <Video className="w-5 h-5 text-[#FF0033]" />
-              <span className="hidden xl:inline">Create</span>
-            </button>
+            {/* If Authenticated: Create Button + Notifications + User Avatar */}
+            {isAuthenticated ? (
+              <>
+                <button
+                  title="Create"
+                  className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-[#0f0f0f] dark:text-[#f1f1f1] text-sm font-medium transition-colors"
+                >
+                  <Video className="w-5 h-5 text-[#FF0033]" />
+                  <span className="hidden xl:inline">Create</span>
+                </button>
 
-            {/* Notifications Bell */}
-            <div className="relative">
-              <button
-                title="Notifications"
-                className="p-2 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 text-[#0f0f0f] dark:text-[#f1f1f1] transition-colors"
-              >
-                <Bell className="w-5 h-5" />
-                <NotificationBadge count={3} />
-              </button>
-            </div>
+                <div className="relative">
+                  <button
+                    title="Notifications"
+                    className="p-2 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 text-[#0f0f0f] dark:text-[#f1f1f1] transition-colors"
+                  >
+                    <Bell className="w-5 h-5" />
+                    <NotificationBadge count={3} />
+                  </button>
+                </div>
 
-            {/* User Profile Avatar */}
-            <div className="ml-1">
-              <button
-                title="Account"
-                className="flex items-center rounded-full focus:ring-2 focus:ring-blue-500"
+                {/* User Profile Avatar with YouTube Dropdown Menu */}
+                <div className="relative ml-1" ref={userMenuRef}>
+                  <button
+                    onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                    title={user?.name || 'Account'}
+                    className="flex items-center rounded-full focus:ring-2 focus:ring-blue-500 outline-none"
+                  >
+                    <Avatar
+                      src={user?.avatar}
+                      name={user?.name || 'User'}
+                      size="sm"
+                    />
+                  </button>
+
+                  {/* YouTube Exact User Dropdown Menu */}
+                  {isUserMenuOpen && (
+                    <div className="absolute right-0 top-12 w-72 bg-white dark:bg-[#282828] border border-neutral-200 dark:border-neutral-700/80 rounded-2xl shadow-xl py-2 z-50 text-[#0f0f0f] dark:text-[#f1f1f1] animate-in fade-in duration-150">
+                      {/* User Account Info Header */}
+                      <div className="flex items-center gap-3 px-4 py-3 border-b border-neutral-200 dark:border-neutral-700">
+                        <Avatar src={user?.avatar} name={user?.name} size="md" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold truncate leading-tight">
+                            {user?.name}
+                          </p>
+                          <p className="text-xs text-[#606060] dark:text-[#aaaaaa] truncate mt-0.5">
+                            @{user?.username}
+                          </p>
+                          <Link
+                            to="/profile"
+                            onClick={() => setIsUserMenuOpen(false)}
+                            className="text-xs text-blue-600 dark:text-blue-400 hover:underline block mt-1"
+                          >
+                            Manage your account
+                          </Link>
+                        </div>
+                      </div>
+
+                      {/* Dropdown Items */}
+                      <div className="py-1">
+                        <Link
+                          to="/you"
+                          onClick={() => setIsUserMenuOpen(false)}
+                          className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-700/60 transition"
+                        >
+                          <Tv className="w-5 h-5 text-neutral-500" />
+                          <span>Your channel</span>
+                        </Link>
+                        <Link
+                          to="/profile"
+                          onClick={() => setIsUserMenuOpen(false)}
+                          className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-700/60 transition"
+                        >
+                          <Settings className="w-5 h-5 text-neutral-500" />
+                          <span>Settings & Security</span>
+                        </Link>
+                      </div>
+
+                      <div className="border-t border-neutral-200 dark:border-neutral-700 my-1" />
+
+                      {/* Sign Out Item */}
+                      <div className="py-1">
+                        <button
+                          onClick={handleLogout}
+                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left hover:bg-neutral-100 dark:hover:bg-neutral-700/60 text-red-600 dark:text-red-400 transition"
+                        >
+                          <LogOut className="w-5 h-5" />
+                          <span>Sign out</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              /* If Guest: YouTube Blue Sign In Button */
+              <Link
+                to="/login"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-neutral-300 dark:border-neutral-700 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 text-sm font-semibold transition ml-1"
               >
-                <Avatar
-                  src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80"
-                  name="Intern Developer"
-                  size="sm"
-                />
-              </button>
-            </div>
+                <UserCircle2 className="w-5 h-5" />
+                <span>Sign in</span>
+              </Link>
+            )}
           </div>
         </div>
       )}
