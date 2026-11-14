@@ -36,6 +36,8 @@ const config = {
   // Upload Limits (configurable via environment)
   uploads: {
     maxVideoSizeMB: parseInt(process.env.MAX_VIDEO_SIZE_MB, 10) || 100, // 100 MB default
+    maxShortSizeMB: parseInt(process.env.MAX_SHORT_SIZE_MB, 10) || 50, // 50 MB default for Shorts
+    maxShortDurationSeconds: parseInt(process.env.MAX_SHORT_DURATION_SECONDS, 10) || 60, // 60s default
     maxThumbnailSizeMB: parseInt(process.env.MAX_THUMBNAIL_SIZE_MB, 10) || 5, // 5 MB default
     allowedVideoMimeTypes: [
       'video/mp4',

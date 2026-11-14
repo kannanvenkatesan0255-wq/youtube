@@ -181,4 +181,47 @@ VidTube strictly enforces YouTube's design tokens:
 - **Qualification Threshold**: Requires `watchTime >= 5` seconds to prevent crawler or accidental hit counting.
 - **Atomic MongoDB Counter**: Uses `$inc: { views: 1 }` on `Video` and `$inc: { totalViews: 1 }` on `Channel`.
 
+---
+
+## 7. Phase 5 Shorts Architecture, Vertical Video Feed & Gesture Engine
+
+### Vertical Feed Architecture & Player Isolation
+
+```
+[Client / ShortsPage]
+       │
+       ├── 1. GET /api/shorts (Paginated public feed of ready, vertical 9:16 shorts)
+       │
+       ├── 2. Active Index Focus Engine:
+       │      ┌────────────────────────────────────────────────────────┐
+       │      │ Only index === activeIndex video is playing & looping  │
+       │      ├────────────────────────────────────────────────────────┤
+       │      │ Previous (activeIndex - 1) & Next (activeIndex + 1)    │
+       │      │ videos are strictly paused & reset (currentTime = 0)   │
+       │      ├────────────────────────────────────────────────────────┤
+       │      │ Unmuted autoplay blocked by browser policy             │ ──> Seamlessly retries muted
+       │      └────────────────────────────────────────────────────────┘
+       │
+       ├── 3. Gesture & Input Dispatcher:
+       │      - Keyboard: ArrowDown / PageDown (next), ArrowUp / PageUp (previous)
+       │      - Mouse Wheel: DeltaY threshold (> 40 / < -40) with 600ms debounce
+       │      - Touch Swipe: touchstart -> touchend (deltaY > 60: prev, < -60: next)
+       │      - Desktop Navigation Arrows: Floating Prev / Next action buttons
+       │
+       ├── 4. Seamless URL Synchronization:
+       │      - Updating active Short syncs window.history to /shorts/:shortId
+       │      - Direct /shorts/:shortId route initializes feed directly focused on that Short
+       │
+       ├── 5. Qualified Short View Counter:
+       │      POST /api/shorts/:id/view { watchDuration: 20 }
+       │      - Requires watchTime >= 2 seconds
+       │      - 30-second in-memory cooldown cache per `${shortId}:${user|ip}`
+       │      - Atomically updates Short.views and Channel.totalViews
+       │
+       └── 6. Interaction & Creator Studio:
+              - Right action bar: Optimistic Likes / Dislikes, Comments drawer, Share URL
+              - Studio: Dual Video / Short upload and management tabs with 9:16 aspect ratio preview
+```
+
+
 

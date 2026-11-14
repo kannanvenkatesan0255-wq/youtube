@@ -6,6 +6,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import CategoryChips from '../components/video/CategoryChips';
 import VideoGrid from '../components/video/VideoGrid';
+import ShortsShelf from '../components/shorts/ShortsShelf';
 import { SAMPLE_VIDEOS } from '../utils/sampleData';
 import { Sparkles, UploadCloud, Loader2 } from 'lucide-react';
 import { videoService } from '../services/videoService';
@@ -109,6 +110,9 @@ export const HomePage = () => {
             </div>
           </div>
         )}
+
+        {/* Dedicated Shorts Shelf */}
+        <ShortsShelf />
 
         {/* Video Grid */}
         {loading && realVideos.length === 0 ? (

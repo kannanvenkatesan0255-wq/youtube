@@ -43,7 +43,7 @@ export const Sidebar = () => {
     <aside className="w-60 h-[calc(100vh-56px)] overflow-y-auto px-3 py-3 select-none text-[#0f0f0f] dark:text-[#f1f1f1]">
       {/* Primary Section */}
       <div className="space-y-0.5">
-        <SidebarItem icon={<Home className="w-5 h-5" />} label="Home" to="/" isActive={true} />
+        <SidebarItem icon={<Home className="w-5 h-5" />} label="Home" to="/" />
         <SidebarItem icon={<Film className="w-5 h-5 text-[#FF0033]" />} label="Shorts" to="/shorts" />
         <SidebarItem icon={<Tv className="w-5 h-5" />} label="Subscriptions" to="/subscriptions" />
       </div>

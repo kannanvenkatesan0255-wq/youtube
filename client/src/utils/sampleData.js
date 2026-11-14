@@ -132,3 +132,78 @@ export const SAMPLE_CHANNELS = [
   { id: 'ch-4', name: 'Backend Architecture', avatar: 'https://images.unsplash.com/photo-1527980965255-d3b416303d12?auto=format&fit=crop&w=80&q=80', hasNewVideo: true },
   { id: 'ch-5', name: 'GamerVerse Central', avatar: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&w=80&q=80', hasNewVideo: false }
 ];
+
+export const SAMPLE_SHORTS = [
+  {
+    id: 'sample-short-01',
+    title: 'Top 3 React 19 tricks every developer needs to know! 🚀 #react #webdev',
+    description: 'Quick React 19 performance optimizations and useOptimistic breakdown in under 30 seconds!',
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1633356122544-f134324a6cee?auto=format&fit=crop&w=720&h=1280&q=80',
+    duration: 15,
+    views: 342900,
+    likesCount: 18400,
+    commentsCount: 382,
+    soundTitle: 'VidTube Coding Beats - Original',
+    channel: {
+      name: 'Modern Dev Tips',
+      avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=120&q=80',
+      isVerified: true,
+      subscribersCount: 245000
+    }
+  },
+  {
+    id: 'sample-short-02',
+    title: 'Tailwind CSS hidden feature you are probably not using 👀 #css #frontend',
+    description: 'Arbitrary variants and group hover animations explained quickly!',
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?auto=format&fit=crop&w=720&h=1280&q=80',
+    duration: 22,
+    views: 890400,
+    likesCount: 42100,
+    commentsCount: 654,
+    soundTitle: 'Trending Lo-Fi Vibes',
+    channel: {
+      name: 'VidTube Academy',
+      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&q=80',
+      isVerified: true,
+      subscribersCount: 520000
+    }
+  },
+  {
+    id: 'sample-short-03',
+    title: 'How Senior Engineers structure Express API microservices ⚡ #nodejs #backend',
+    description: 'Clean architectural boundaries and error middlewares in 60s.',
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=720&h=1280&q=80',
+    duration: 28,
+    views: 125000,
+    likesCount: 9300,
+    commentsCount: 142,
+    soundTitle: 'Clean Tech Synth Wave',
+    channel: {
+      name: 'Backend Architecture',
+      avatar: 'https://images.unsplash.com/photo-1527980965255-d3b416303d12?auto=format&fit=crop&w=120&q=80',
+      isVerified: false,
+      subscribersCount: 88000
+    }
+  },
+  {
+    id: 'sample-short-04',
+    title: 'Insane AI Tool that writes full-stack tests automatically 🔥 #ai #coding',
+    description: 'Automating testing pipelines with autonomous agent benchmarks.',
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyBlazes.mp4',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1677442136019-21780efad99a?auto=format&fit=crop&w=720&h=1280&q=80',
+    duration: 35,
+    views: 650000,
+    likesCount: 38200,
+    commentsCount: 512,
+    soundTitle: 'Future Beats 2026',
+    channel: {
+      name: 'AI Frontier',
+      avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=120&q=80',
+      isVerified: true,
+      subscribersCount: 310000
+    }
+  }
+];

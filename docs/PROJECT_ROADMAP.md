@@ -83,13 +83,38 @@ VidTube is a production-oriented, full-stack video sharing and adaptive streamin
   - Records watched seconds, duration, and completion status (>= 90%).
   - Automatically resumes playback from saved position for authenticated viewers with notification toast.
 
-### Phase 5: VidTube Shorts & Vertical Player (Next)
-- Vertical video upload pipeline (max 60 seconds).
-- TikTok/YouTube Shorts-style full-screen vertical swipeable player.
-- Keyboard navigation (Up/Down arrow keys) and mobile swipe gestures.
-- Short engagement controls (Like, Dislike, Comments drawer, Share, Sound attribution).
+### Phase 5: Shorts Upload, Vertical Video Feed & Interaction Engine (Completed)
+- **Shorts Database Model & Schema:**
+  - Extended `Short` schema supporting `publicId`, `thumbnailPublicId`, `duration` (max 60s), `width`, `height`, `aspectRatio: '9:16'`, `format`, `fileSize`, `tags`, `visibility` (public, unlisted, private), `processingStatus` (uploading, processing, ready, failed), `soundTitle`, `views`, `likesCount`, `dislikesCount`, `isPublished`, `publishedAt`.
+  - Compound indexing on `{ visibility: 1, processingStatus: 1, createdAt: -1 }`, `{ owner: 1, createdAt: -1 }`, and `{ views: -1 }`.
+- **Backend Shorts REST API (`/api/shorts`):**
+  - `POST /api/shorts/upload-signature`: Direct client-side Cloudinary signed upload targeting folder `vidtube/shorts`.
+  - `POST /api/shorts`: Create Short draft with duration, aspect ratio, sound attribution, and title validation.
+  - `POST /api/shorts/:id/complete`: Confirm upload completion and set status to ready with media dimensions.
+  - `GET /api/shorts`: Paginated public feed returning ready public shorts with channel details populated.
+  - `GET /api/shorts/my-shorts`: Creator Studio shorts endpoint filtering by visibility, processing status, and search keywords.
+  - `GET /api/shorts/:id`: Retrieve single Short with private authorization checks and unlisted direct link support.
+  - `POST /api/shorts/:id/view`: Qualified view tracking with 2s watch time threshold and 30-second deduplication cooldown.
+  - `PATCH /api/shorts/:id`: Owner metadata update (title, description, soundTitle, tags).
+  - `PATCH /api/shorts/:id/visibility`: Owner visibility toggling (public, unlisted, private).
+  - `DELETE /api/shorts/:id`: Permanent Short deletion and Cloudinary media purge.
+- **Frontend Vertical Shorts Feed (`/shorts`, `/shorts/:shortId`):**
+  - Desktop centered vertical 9:16 container with right-side interaction panel and bottom creator overlay.
+  - Single active video focus: only the currently centered Short plays, previous and next items pause and reset.
+  - Autoplay & loop with browser audio policy fallback (re-triggers muted if unmuted autoplay is blocked).
+  - Navigation controls: keyboard `ArrowUp` / `ArrowDown`, mouse wheel, touch swipe up / swipe down, and on-screen navigation buttons.
+  - URL synchronization: browsing updates the browser address bar to `/shorts/:shortId` without full page reload.
+  - Bottom Creator Overlay: Channel avatar, name, handle, Subscribe button, title with `#tags`, sound attribution with spinning vinyl icon.
+  - Right Action Bar: Like & Dislike buttons with optimistic counters, Comments toggle, Share button with clipboard copy toast, Sound disc.
+  - Slide-in Comments Drawer with comments count and comment submission input.
+- **Homepage Integration & Creator Studio:**
+  - `ShortsShelf.jsx`: Horizontal scrollable grid of 9:16 vertical cards embedded in the homepage above long-form videos.
+  - `VideoUploadPage.jsx`: Tab switcher for "Long-form Video" vs "VidTube Short (Vertical 9:16, max 60s)", 60-second duration validation, sound attribution input, and vertical preview container.
+  - `MyVideosPage.jsx`: Studio tabs for "Videos" vs "Shorts" with 9:16 thumbnail preview, visibility filters, edit modal, and delete confirmation.
+- **Automated Test Suite:**
+  - `server/src/tests/shorts.test.js` covers 24 verification points with 100% pass rate.
 
-### Phase 6: Engagement & Social System
+### Phase 6: Engagement & Social System (Next)
 - Real-time comment system with nested threaded replies.
 - Pinning comments by channel owners.
 - Polymorphic Like/Dislike system for videos, shorts, and comments.

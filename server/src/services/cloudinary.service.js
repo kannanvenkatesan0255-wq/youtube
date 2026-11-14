@@ -15,6 +15,8 @@ const generateUploadSignature = ({ folder = 'vidtube/videos', resourceType = 'vi
     logger.warn('Cloudinary is not fully configured in server/.env (CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET).');
     return {
       isConfigured: false,
+      folder,
+      timestamp: Math.round(new Date().getTime() / 1000),
       message: 'Cloudinary credentials are not configured in server/.env'
     };
   }

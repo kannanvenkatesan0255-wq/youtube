@@ -7,6 +7,7 @@ const healthRoutes = require('./health.routes');
 const authRoutes = require('./auth.routes');
 const userRoutes = require('./user.routes');
 const videoRoutes = require('./video.routes');
+const shortRoutes = require('./short.routes');
 
 const router = Router();
 
@@ -19,6 +20,9 @@ router.use('/users', userRoutes);
 
 // Mount active Phase 3 Video Upload, Storage & Management Engine routes
 router.use('/videos', videoRoutes);
+
+// Mount active Phase 5 Shorts Upload & Vertical Feed Engine routes
+router.use('/shorts', shortRoutes);
 
 /**
  * Architectural Module Placeholders for Subsequent Phases
@@ -41,7 +45,6 @@ const createPhasePlaceholder = (moduleName, targetPhase) => {
 
 // Register architectural route boundaries for upcoming phases
 router.use('/channels', createPhasePlaceholder('Channels', 4));
-router.use('/shorts', createPhasePlaceholder('Shorts', 5));
 router.use('/comments', createPhasePlaceholder('Comments', 6));
 router.use('/likes', createPhasePlaceholder('Likes', 6));
 router.use('/subscriptions', createPhasePlaceholder('Subscriptions', 7));

@@ -4,7 +4,7 @@
  * Direct Cloudinary Signed Uploads with Real-Time Progress & Metadata Management
  */
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import {
   Upload,
   Video as VideoIcon,
@@ -17,16 +17,23 @@ import {
   Lock,
   ArrowLeft,
   Tv,
-  FileVideo
+  FileVideo,
+  Zap,
+  Music2
 } from 'lucide-react';
 import { videoService } from '../../services/videoService';
+import { shortService } from '../../services/shortService';
 import { CATEGORIES } from '../../utils/constants';
 import Button from '../../components/common/Button';
 import { useAuth } from '../../hooks/useAuth';
 
 export const VideoUploadPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
+
+  // Mode: 'video' (long-form) vs 'short' (vertical 9:16 max 60s)
+  const [uploadType, setUploadType] = useState(searchParams.get('type') === 'short' ? 'short' : 'video');
 
   // Step state: 'select' -> 'details' -> 'uploading' -> 'success'
   const [step, setStep] = useState('select');
@@ -43,8 +50,9 @@ export const VideoUploadPage = () => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('Web Development');
+  const [soundTitle, setSoundTitle] = useState('Original Audio');
   const [tagInput, setTagInput] = useState('');
-  const [tags, setTags] = useState(['VidTube', 'Coding']);
+  const [tags, setTags] = useState(uploadType === 'short' ? ['Shorts', 'VidTube'] : ['VidTube', 'Coding']);
   const [visibility, setVisibility] = useState('public');
   const [language, setLanguage] = useState('English');
   const [location, setLocation] = useState('');
@@ -52,7 +60,7 @@ export const VideoUploadPage = () => {
   // Upload Progress & Abort
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStatusText, setUploadStatusText] = useState('Uploading video to Cloudinary...');
-  const [createdVideo, setCreatedVideo] = useState(null);
+  const [createdItem, setCreatedItem] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
   const [isCloudinaryConfigured, setIsCloudinaryConfigured] = useState(true);
 
@@ -147,12 +155,17 @@ export const VideoUploadPage = () => {
     setErrorMessage('');
 
     if (!title.trim()) {
-      setErrorMessage('Video title is required.');
+      setErrorMessage(`${uploadType === 'short' ? 'Short' : 'Video'} title is required.`);
       return;
     }
 
     if (!videoFile) {
       setErrorMessage('Please select a video file to upload.');
+      return;
+    }
+
+    if (uploadType === 'short' && videoDuration > 60) {
+      setErrorMessage(`VidTube Shorts must not exceed 60 seconds (current duration: ${videoDuration}s). Please trim your video or upload as a standard video.`);
       return;
     }
 
@@ -163,86 +176,164 @@ export const VideoUploadPage = () => {
     try {
       abortControllerRef.current = new AbortController();
 
-      // 1. Request Secure Signature from VidTube Backend
-      const sigRes = await videoService.getUploadSignature({
-        resourceType: 'video',
-        folder: 'vidtube/videos'
-      });
+      if (uploadType === 'short') {
+        // --- SHORTS UPLOAD WORKFLOW ---
+        const sigRes = await shortService.getUploadSignature();
+        const signatureData = sigRes.data;
 
-      const signatureData = sigRes.data;
+        let videoUrl = '';
+        let publicId = '';
+        let uploadedDuration = videoDuration || 30;
+        let width = 720;
+        let height = 1280;
+        let format = 'mp4';
+        let fileSize = videoFile.size;
 
-      let videoUrl = '';
-      let publicId = '';
-      let uploadedDuration = videoDuration || 45;
-      let width = 1280;
-      let height = 720;
-      let format = 'mp4';
-      let fileSize = videoFile.size;
+        if (signatureData.isConfigured) {
+          setIsCloudinaryConfigured(true);
+          setUploadStatusText('Uploading vertical Short to Cloudinary storage...');
 
-      // 2. Perform Real Cloudinary Upload if Configured
-      if (signatureData.isConfigured) {
-        setIsCloudinaryConfigured(true);
-        setUploadStatusText('Uploading video to Cloudinary storage...');
+          const uploadResult = await shortService.uploadDirectToCloudinary(
+            videoFile,
+            signatureData,
+            (percent) => {
+              setUploadProgress(Math.max(15, Math.min(85, percent)));
+            },
+            abortControllerRef.current.signal
+          );
 
-        const uploadResult = await videoService.uploadDirectToCloudinary(
-          videoFile,
-          signatureData,
-          (percent) => {
-            setUploadProgress(Math.max(15, Math.min(85, percent)));
-          },
-          abortControllerRef.current.signal
-        );
+          videoUrl = uploadResult.secure_url;
+          publicId = uploadResult.public_id;
+          uploadedDuration = Math.round(uploadResult.duration || videoDuration || 20);
+          width = uploadResult.width || 720;
+          height = uploadResult.height || 1280;
+          format = uploadResult.format || 'mp4';
+          fileSize = uploadResult.bytes || videoFile.size;
+        } else {
+          setIsCloudinaryConfigured(false);
+          setUploadProgress(70);
+          setUploadStatusText('Development mode: storing local short metadata...');
+          videoUrl = 'https://assets.mixkit.co/videos/preview/mixkit-vertical-view-of-skateboarding-tricks-in-a-skatepark-42247-large.mp4';
+          publicId = `local_short_${Date.now()}`;
+        }
 
-        videoUrl = uploadResult.secure_url;
-        publicId = uploadResult.public_id;
-        uploadedDuration = Math.round(uploadResult.duration || videoDuration || 30);
-        width = uploadResult.width || 1280;
-        height = uploadResult.height || 720;
-        format = uploadResult.format || 'mp4';
-        fileSize = uploadResult.bytes || videoFile.size;
+        setUploadProgress(90);
+        setUploadStatusText('Saving Short details to VidTube database...');
+
+        // Create short record draft
+        const createRes = await shortService.createShort({
+          title,
+          description,
+          tags,
+          visibility,
+          soundTitle: soundTitle || 'Original Audio',
+          videoUrl,
+          publicId,
+          thumbnailUrl: thumbnailPreviewUrl || 'https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=800&q=80',
+          duration: uploadedDuration,
+          width,
+          height,
+          aspectRatio: '9:16',
+          format,
+          fileSize
+        });
+
+        const shortId = createRes.data.id || createRes.data._id;
+
+        // Complete upload
+        const completeRes = await shortService.completeUpload(shortId, {
+          videoUrl,
+          publicId,
+          thumbnailUrl: thumbnailPreviewUrl || createRes.data.thumbnailUrl,
+          duration: uploadedDuration,
+          width,
+          height,
+          format,
+          fileSize,
+          processingStatus: 'ready'
+        });
+
+        setUploadProgress(100);
+        setCreatedItem(completeRes.data);
+        setStep('success');
       } else {
-        // Safe development mode: Cloudinary credentials not configured in .env
-        setIsCloudinaryConfigured(false);
-        setUploadProgress(70);
-        setUploadStatusText('Cloudinary credentials not configured. Saving local metadata and mock stream URL...');
+        // --- STANDARD LONG-FORM VIDEO WORKFLOW ---
+        const sigRes = await videoService.getUploadSignature({
+          resourceType: 'video',
+          folder: 'vidtube/videos'
+        });
 
-        // Create fallback URL for testing/previewing
-        videoUrl = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
-        publicId = `local_sample_${Date.now()}`;
+        const signatureData = sigRes.data;
+
+        let videoUrl = '';
+        let publicId = '';
+        let uploadedDuration = videoDuration || 45;
+        let width = 1280;
+        let height = 720;
+        let format = 'mp4';
+        let fileSize = videoFile.size;
+
+        if (signatureData.isConfigured) {
+          setIsCloudinaryConfigured(true);
+          setUploadStatusText('Uploading video to Cloudinary storage...');
+
+          const uploadResult = await videoService.uploadDirectToCloudinary(
+            videoFile,
+            signatureData,
+            (percent) => {
+              setUploadProgress(Math.max(15, Math.min(85, percent)));
+            },
+            abortControllerRef.current.signal
+          );
+
+          videoUrl = uploadResult.secure_url;
+          publicId = uploadResult.public_id;
+          uploadedDuration = Math.round(uploadResult.duration || videoDuration || 30);
+          width = uploadResult.width || 1280;
+          height = uploadResult.height || 720;
+          format = uploadResult.format || 'mp4';
+          fileSize = uploadResult.bytes || videoFile.size;
+        } else {
+          setIsCloudinaryConfigured(false);
+          setUploadProgress(70);
+          setUploadStatusText('Cloudinary credentials not configured. Saving local metadata and mock stream URL...');
+
+          videoUrl = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
+          publicId = `local_sample_${Date.now()}`;
+        }
+
+        setUploadProgress(90);
+        setUploadStatusText('Saving video details to VidTube database...');
+
+        const createRes = await videoService.createVideo({
+          title,
+          description,
+          category,
+          tags,
+          visibility,
+          language,
+          location,
+          videoUrl,
+          publicId,
+          thumbnailUrl: thumbnailPreviewUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80',
+          duration: uploadedDuration,
+          width,
+          height,
+          format,
+          fileSize,
+          resolution: height >= 1080 ? '1080p' : '720p'
+        });
+
+        setUploadProgress(100);
+        setCreatedItem(createRes.data);
+        setStep('success');
       }
-
-      setUploadProgress(90);
-      setUploadStatusText('Saving video details to VidTube database...');
-
-      // 3. Create Video Record in Database
-      const createRes = await videoService.createVideo({
-        title,
-        description,
-        category,
-        tags,
-        visibility,
-        language,
-        location,
-        videoUrl,
-        publicId,
-        thumbnailUrl: thumbnailPreviewUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80',
-        duration: uploadedDuration,
-        width,
-        height,
-        format,
-        fileSize,
-        resolution: height >= 1080 ? '1080p' : '720p'
-      });
-
-      setUploadProgress(100);
-      setCreatedVideo(createRes.data);
-      setStep('success');
     } catch (err) {
       if (err.name === 'CanceledError' || err.message === 'canceled') {
         setUploadStatusText('Upload canceled.');
         setStep('details');
       } else {
-        setErrorMessage(err.message || 'Video upload failed. Please try again.');
+        setErrorMessage(err.message || 'Upload failed. Please try again.');
         setStep('details');
       }
     }
@@ -283,6 +374,41 @@ export const VideoUploadPage = () => {
         </Link>
       </div>
 
+      {/* Upload Type Selector (Tabs: Video vs Short) */}
+      <div className="flex items-center gap-2 mb-6 p-1 bg-neutral-100 dark:bg-neutral-800 rounded-2xl w-fit">
+        <button
+          type="button"
+          onClick={() => {
+            setUploadType('video');
+            setTags(['VidTube', 'Coding']);
+          }}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition ${
+            uploadType === 'video'
+              ? 'bg-white dark:bg-[#0f0f0f] text-[#0f0f0f] dark:text-[#f1f1f1] shadow-sm'
+              : 'text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white'
+          }`}
+        >
+          <VideoIcon className="w-4 h-4 text-red-600" />
+          Long-form Video
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setUploadType('short');
+            setTags(['Shorts', 'VidTube']);
+          }}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition ${
+            uploadType === 'short'
+              ? 'bg-white dark:bg-[#0f0f0f] text-[#0f0f0f] dark:text-[#f1f1f1] shadow-sm'
+              : 'text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white'
+          }`}
+        >
+          <Zap className="w-4 h-4 text-amber-500 fill-amber-500" />
+          VidTube Short (Vertical 9:16)
+        </button>
+      </div>
+
       {/* Error Alert */}
       {errorMessage && (
         <div className="mb-6 p-4 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 flex items-start gap-3 text-red-600 dark:text-red-400 text-sm">
@@ -318,10 +444,14 @@ export const VideoUploadPage = () => {
           </div>
 
           <h2 className="text-lg font-semibold text-[#0f0f0f] dark:text-[#f1f1f1] mb-2">
-            Drag and drop video files to upload
+            {uploadType === 'short'
+              ? 'Drag and drop vertical video for your Short'
+              : 'Drag and drop video files to upload'}
           </h2>
           <p className="text-xs text-[#606060] dark:text-[#aaaaaa] max-w-sm mb-6">
-            Your videos will be private until you publish them. Supports MP4, WebM, MOV, and MKV up to 100 MB.
+            {uploadType === 'short'
+              ? 'Shorts must be 60 seconds or shorter in vertical 9:16 orientation. Supports MP4, WebM, MOV up to 50 MB.'
+              : 'Your videos will be private until you publish them. Supports MP4, WebM, MOV, and MKV up to 100 MB.'}
           </p>
 
           <Button
@@ -334,7 +464,7 @@ export const VideoUploadPage = () => {
               fileInputRef.current?.click();
             }}
           >
-            Select files
+            {uploadType === 'short' ? 'Select Short video' : 'Select video file'}
           </Button>
         </div>
       )}
@@ -360,10 +490,32 @@ export const VideoUploadPage = () => {
                   value={title}
                   maxLength={100}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Add a title that describes your video"
+                  placeholder={uploadType === 'short' ? 'Add a title for your Short (e.g. Crazy trick! #shorts)' : 'Add a title that describes your video'}
                   className="w-full px-3 py-2 text-sm bg-neutral-50 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-xl text-[#0f0f0f] dark:text-[#f1f1f1] focus:outline-none focus:border-blue-600"
                 />
               </div>
+
+              {/* Sound Attribution Input (Shorts only) */}
+              {uploadType === 'short' && (
+                <div className="bg-white dark:bg-[#1f1f1f] border border-neutral-200 dark:border-neutral-800 rounded-2xl p-4 sm:p-5">
+                  <div className="flex justify-between items-center mb-1.5">
+                    <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300 flex items-center gap-1.5">
+                      <Music2 className="w-3.5 h-3.5 text-neutral-500" /> Sound attribution / audio title
+                    </label>
+                    <span className="text-[11px] text-neutral-400">
+                      {soundTitle.length}/100
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    value={soundTitle}
+                    maxLength={100}
+                    onChange={(e) => setSoundTitle(e.target.value)}
+                    placeholder="Original Audio - Your Name"
+                    className="w-full px-3 py-2 text-sm bg-neutral-50 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-xl text-[#0f0f0f] dark:text-[#f1f1f1] focus:outline-none focus:border-blue-600"
+                  />
+                </div>
+              )}
 
               {/* Description Input */}
               <div className="bg-white dark:bg-[#1f1f1f] border border-neutral-200 dark:border-neutral-800 rounded-2xl p-4 sm:p-5">
@@ -577,7 +729,13 @@ export const VideoUploadPage = () => {
                 </h3>
 
                 {videoPreviewUrl ? (
-                  <div className="aspect-video w-full rounded-xl overflow-hidden bg-black mb-3">
+                  <div
+                    className={`${
+                      uploadType === 'short'
+                        ? 'aspect-[9/16] max-w-[200px] mx-auto'
+                        : 'aspect-video w-full'
+                    } rounded-xl overflow-hidden bg-black mb-3`}
+                  >
                     <video
                       src={videoPreviewUrl}
                       controls
@@ -586,7 +744,13 @@ export const VideoUploadPage = () => {
                     />
                   </div>
                 ) : (
-                  <div className="aspect-video w-full rounded-xl bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-neutral-400 mb-3">
+                  <div
+                    className={`${
+                      uploadType === 'short'
+                        ? 'aspect-[9/16] max-w-[200px] mx-auto'
+                        : 'aspect-video w-full'
+                    } rounded-xl bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-neutral-400 mb-3`}
+                  >
                     <FileVideo className="w-8 h-8" />
                   </div>
                 )}
@@ -604,6 +768,20 @@ export const VideoUploadPage = () => {
                       {(videoFile?.size / (1024 * 1024)).toFixed(2)} MB
                     </span>
                   </div>
+                  {videoDuration > 0 && (
+                    <div className="flex justify-between">
+                      <span>Duration:</span>
+                      <span
+                        className={`font-semibold ${
+                          uploadType === 'short' && videoDuration > 60
+                            ? 'text-red-500 font-bold'
+                            : 'text-[#0f0f0f] dark:text-[#f1f1f1]'
+                        }`}
+                      >
+                        {videoDuration}s {uploadType === 'short' && videoDuration > 60 ? '⚠️ (Exceeds 60s limit)' : ''}
+                      </span>
+                    </div>
+                  )}
                   <div className="flex justify-between">
                     <span>Visibility:</span>
                     <span className="font-semibold capitalize text-[#0f0f0f] dark:text-[#f1f1f1]">
@@ -612,6 +790,12 @@ export const VideoUploadPage = () => {
                   </div>
                 </div>
 
+                {uploadType === 'short' && videoDuration > 60 && (
+                  <div className="p-2.5 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 text-[11px] leading-tight">
+                    Shorts cannot exceed 60 seconds. Please select a shorter video or switch tabs to Long-form Video.
+                  </div>
+                )}
+
                 <div className="pt-4 border-t border-neutral-200 dark:border-neutral-800 mt-4 space-y-2">
                   <Button
                     type="submit"
@@ -619,7 +803,7 @@ export const VideoUploadPage = () => {
                     size="md"
                     className="w-full justify-center py-2.5 font-semibold"
                   >
-                    Save & Publish
+                    Save & Publish {uploadType === 'short' ? 'Short' : 'Video'}
                   </Button>
                   <Button
                     type="button"
@@ -646,7 +830,7 @@ export const VideoUploadPage = () => {
 
           <div>
             <h2 className="text-lg font-bold text-[#0f0f0f] dark:text-[#f1f1f1]">
-              Publishing "{title}"
+              Publishing {uploadType === 'short' ? 'Short' : 'Video'}: "{title}"
             </h2>
             <p className="text-xs text-[#606060] dark:text-[#aaaaaa] mt-1">
               {uploadStatusText}
@@ -681,7 +865,7 @@ export const VideoUploadPage = () => {
       )}
 
       {/* STEP 4: SUCCESS */}
-      {step === 'success' && createdVideo && (
+      {step === 'success' && createdItem && (
         <div className="max-w-lg mx-auto bg-white dark:bg-[#1f1f1f] border border-neutral-200 dark:border-neutral-800 rounded-3xl p-8 text-center space-y-6">
           <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 mx-auto flex items-center justify-center">
             <CheckCircle2 className="w-9 h-9" />
@@ -689,25 +873,28 @@ export const VideoUploadPage = () => {
 
           <div>
             <h2 className="text-xl font-bold text-[#0f0f0f] dark:text-[#f1f1f1]">
-              Video successfully published!
+              {uploadType === 'short' ? 'Short' : 'Video'} successfully published!
             </h2>
             <p className="text-xs text-[#606060] dark:text-[#aaaaaa] mt-1">
-              Your video is now available in {createdVideo.visibility} mode.
+              Your {uploadType === 'short' ? 'Short' : 'video'} is now available in {createdItem.visibility} mode.
             </p>
           </div>
 
           <div className="p-3 bg-neutral-50 dark:bg-neutral-800 rounded-xl text-left flex items-center justify-between text-xs text-neutral-600 dark:text-neutral-400">
             <span className="truncate pr-2 font-mono">
-              /watch/{createdVideo.id || createdVideo._id}
+              {uploadType === 'short'
+                ? `/shorts/${createdItem.id || createdItem._id}`
+                : `/watch/${createdItem.id || createdItem._id}`}
             </span>
             <Button
               variant="ghost"
               size="sm"
               onClick={() => {
-                navigator.clipboard.writeText(
-                  `${window.location.origin}/watch/${createdVideo.id || createdVideo._id}`
-                );
-                alert('Video link copied to clipboard!');
+                const url = uploadType === 'short'
+                  ? `${window.location.origin}/shorts/${createdItem.id || createdItem._id}`
+                  : `${window.location.origin}/watch/${createdItem.id || createdItem._id}`;
+                navigator.clipboard.writeText(url);
+                alert('Link copied to clipboard!');
               }}
             >
               Copy link
@@ -715,24 +902,36 @@ export const VideoUploadPage = () => {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 pt-2">
-            <Link to="/studio/videos" className="flex-1">
+            <Link
+              to={uploadType === 'short' ? `/shorts/${createdItem.id || createdItem._id}` : `/watch/${createdItem.id || createdItem._id}`}
+              className="flex-1"
+            >
               <Button variant="primary" size="md" className="w-full justify-center">
+                {uploadType === 'short' ? 'Watch Short' : 'Watch Video'}
+              </Button>
+            </Link>
+            <Link to={uploadType === 'short' ? '/studio/videos?tab=shorts' : '/studio/videos'} className="flex-1">
+              <Button variant="outline" size="md" className="w-full justify-center">
                 Manage in Studio
               </Button>
             </Link>
+          </div>
+
+          <div className="pt-2">
             <Button
-              variant="outline"
-              size="md"
-              className="flex-1 justify-center"
+              variant="ghost"
+              size="sm"
+              className="text-neutral-500"
               onClick={() => {
                 setVideoFile(null);
                 setVideoPreviewUrl('');
                 setTitle('');
                 setDescription('');
+                setCreatedItem(null);
                 setStep('select');
               }}
             >
-              Upload another video
+              Upload another {uploadType === 'short' ? 'Short' : 'video'}
             </Button>
           </div>
         </div>

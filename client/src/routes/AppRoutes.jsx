@@ -14,6 +14,7 @@ import ProfilePage from '../pages/account/ProfilePage';
 import VideoUploadPage from '../pages/studio/VideoUploadPage';
 import MyVideosPage from '../pages/studio/MyVideosPage';
 import WatchPage from '../pages/WatchPage';
+import ShortsPage from '../pages/ShortsPage';
 import PlaceholderPage from '../pages/PlaceholderPage';
 import NotFoundPage from '../pages/NotFoundPage';
 import { ProtectedRoute, GuestRoute } from '../components/navigation/RouteGuards';
@@ -106,8 +107,9 @@ export const AppRoutes = () => {
           }
         />
 
-        {/* Upcoming Phase Roadmap Placeholders */}
-        <Route path="/shorts" element={<PlaceholderPage title="VidTube Shorts" phase={5} />} />
+        {/* Phase 5: VidTube Shorts Dedicated Feed */}
+        <Route path="/shorts" element={<ShortsPage />} />
+        <Route path="/shorts/:shortId" element={<ShortsPage />} />
         <Route path="/subscriptions" element={<PlaceholderPage title="Subscriptions Feed" phase={7} />} />
         <Route path="/history" element={<PlaceholderPage title="Watch History" phase={9} />} />
         <Route path="/playlists" element={<PlaceholderPage title="Your Playlists" phase={7} />} />

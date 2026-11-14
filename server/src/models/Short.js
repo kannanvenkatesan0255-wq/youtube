@@ -1,8 +1,12 @@
 /**
  * Short Model (Vertical Video)
- * VidTube Platform Architecture
+ * VidTube Platform Architecture - Phase 5 Shorts Engine
  */
 const mongoose = require('mongoose');
+const {
+  VIDEO_VISIBILITY,
+  VIDEO_PROCESSING_STATUS
+} = require('../constants/appConstants');
 
 const shortSchema = new mongoose.Schema(
   {
@@ -15,20 +19,72 @@ const shortSchema = new mongoose.Schema(
     description: {
       type: String,
       default: '',
+      trim: true,
       maxlength: [2000, 'Description cannot exceed 2000 characters']
     },
     videoUrl: {
       type: String,
-      required: [true, 'Video URL is required']
+      default: ''
+    },
+    publicId: {
+      type: String,
+      default: '' // Cloudinary video asset public ID
     },
     thumbnailUrl: {
       type: String,
-      required: [true, 'Thumbnail URL is required']
+      default: '' // Cloudinary vertical video thumbnail
+    },
+    thumbnailPublicId: {
+      type: String,
+      default: ''
     },
     duration: {
       type: Number,
-      required: true,
-      max: [60, 'Shorts duration cannot exceed 60 seconds']
+      default: 0,
+      min: 0,
+      max: [180, 'Short duration cannot exceed 180 seconds']
+    },
+    width: {
+      type: Number,
+      default: 0
+    },
+    height: {
+      type: Number,
+      default: 0
+    },
+    aspectRatio: {
+      type: String,
+      default: '9:16'
+    },
+    format: {
+      type: String,
+      default: 'mp4'
+    },
+    fileSize: {
+      type: Number,
+      default: 0
+    },
+    tags: [
+      {
+        type: String,
+        trim: true
+      }
+    ],
+    visibility: {
+      type: String,
+      enum: Object.values(VIDEO_VISIBILITY),
+      default: VIDEO_VISIBILITY.PUBLIC,
+      index: true
+    },
+    processingStatus: {
+      type: String,
+      enum: Object.values(VIDEO_PROCESSING_STATUS),
+      default: VIDEO_PROCESSING_STATUS.READY,
+      index: true
+    },
+    processingError: {
+      type: String,
+      default: ''
     },
     views: {
       type: Number,
@@ -41,6 +97,11 @@ const shortSchema = new mongoose.Schema(
       default: 0,
       min: 0
     },
+    dislikesCount: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
     commentsCount: {
       type: Number,
       default: 0,
@@ -48,7 +109,8 @@ const shortSchema = new mongoose.Schema(
     },
     soundTitle: {
       type: String,
-      default: 'Original Audio'
+      default: 'Original Audio',
+      trim: true
     },
     channel: {
       type: mongoose.Schema.Types.ObjectId,
@@ -61,6 +123,15 @@ const shortSchema = new mongoose.Schema(
       ref: 'User',
       required: true,
       index: true
+    },
+    isPublished: {
+      type: Boolean,
+      default: true,
+      index: true
+    },
+    publishedAt: {
+      type: Date,
+      default: Date.now
     }
   },
   {
@@ -70,8 +141,11 @@ const shortSchema = new mongoose.Schema(
   }
 );
 
-shortSchema.index({ createdAt: -1 });
+// High-throughput performance compound indexes
+shortSchema.index({ visibility: 1, processingStatus: 1, createdAt: -1 });
+shortSchema.index({ owner: 1, createdAt: -1 });
+shortSchema.index({ channel: 1, createdAt: -1 });
+shortSchema.index({ views: -1 });
 
 const Short = mongoose.models.Short || mongoose.model('Short', shortSchema);
 module.exports = Short;
-

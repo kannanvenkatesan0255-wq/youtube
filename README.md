@@ -3,7 +3,7 @@
 <div align="center">
   <img src="client/public/vidtube-logo.svg" alt="VidTube Logo" width="120" />
   <h3>A Production-Oriented YouTube Replica Built with Modern Full-Stack Technologies</h3>
-  <p>Phase 4 Active: Custom Video Player, Watch Page, HLS Adaptive Streaming & Progress Engine</p>
+  <p>Phase 5 Active: Shorts Upload, Vertical Video Feed & Interaction Engine</p>
 
   [![React](https://img.shields.io/badge/React-19.0-61DAFB?logo=react&logoColor=black)](https://react.dev/)
   [![Vite](https://img.shields.io/badge/Vite-6.1-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
@@ -26,8 +26,9 @@
 - **Phase 1: Architecture & UI Shell** — ✅ COMPLETED (`d342b80`)
 - **Phase 2: Authentication & Security Engine** — ✅ COMPLETED (`05c768f`)
 - **Phase 3: Video Upload, Storage & Management Engine** — ✅ COMPLETED (`ed4929a`)
-- **Phase 4: Video Player, Watch Page & Adaptive Streaming Engine** — ✅ COMPLETED
-- **Phases 5–10** — Scheduled per [PROJECT_ROADMAP.md](docs/PROJECT_ROADMAP.md)
+- **Phase 4: Video Player, Watch Page & Adaptive Streaming Engine** — ✅ COMPLETED (`5811142`)
+- **Phase 5: Shorts Upload, Vertical Video Feed & Interaction Engine** — ✅ COMPLETED
+- **Phases 6–10** — Scheduled per [PROJECT_ROADMAP.md](docs/PROJECT_ROADMAP.md)
 
 ---
 
@@ -90,6 +91,64 @@ Phase 4 implements a complete, end-to-end video watching experience modeled prec
 - **Persistence (`WatchHistory` model):** Automatically records `watchedSeconds`, `duration`, `completed` flag (set to true when progress >= 90%), and `lastWatchedAt`.
 - **Auto-Resume Integration:** When an authenticated viewer opens a previously watched video, the player automatically resumes from their saved position and displays a subtle notification pill ("Resumed from 02:45").
 - **Security Check:** Saving or retrieving progress for another user's private video returns `HTTP 403 Forbidden`.
+
+---
+
+## ⚡ Phase 5 — Shorts Upload, Vertical Video Feed & Interaction Engine
+
+Phase 5 introduces a fully-featured, short-form vertical video experience modeled directly on **YouTube Shorts**:
+
+### 1. Vertical Player & Feed Page (`/shorts`, `/shorts/:shortId`)
+- **Centered 9:16 Responsive Container:** Built to desktop YouTube Shorts standards (`aspect-[9/16] w-full max-w-[360px] sm:max-w-[400px] h-[85vh]`) and spanning full-screen on mobile devices.
+- **Single Active Video Focus:** Only the currently active, visible Short plays and loops. Previous and next Shorts in the feed are paused and reset to frame 0, preventing audio crosstalk.
+- **Autoplay & Browser Policy Fallback:** Automatically plays when scrolled into focus; if unmuted autoplay is rejected by browser policy, seamlessly retries muted without freezing the UI.
+- **Multi-Modal Navigation:**
+  - `ArrowUp` / `ArrowDown` keyboard navigation with smooth easing.
+  - Mouse wheel scrolling with directional debounce.
+  - Mobile touch swipe gestures (Swipe Up for next Short, Swipe Down for previous Short).
+  - Floating vertical navigation arrows on desktop.
+- **URL Synchronization:** Navigating through the feed dynamically updates the browser URL to `/shorts/:shortId` using HTML5 history API without triggering full page reloads.
+
+### 2. Interaction Layer & Creator Overlay
+- **Right Action Bar:**
+  - Like button with optimistic toggle and formatted counter.
+  - Dislike button with toggle state.
+  - Comment button opening the slide-in comments drawer.
+  - Share button with clipboard URL copy and toast alert.
+  - Spinning audio vinyl disc attribution icon.
+- **Bottom Creator Overlay:**
+  - Channel avatar, name, handle (`@username`), and YouTube-style Subscribe button.
+  - Video title with clickable `#tags` highlighted in blue.
+  - Sound attribution banner with scrolling music icon.
+- **Slide-In Comments Drawer (`ShortsCommentsDrawer.jsx`):**
+  - Slide-over sheet from bottom/right allowing viewers to read and submit comments without navigating away from the Short.
+
+### 3. Homepage Shelf & Creator Studio Integration
+- **Homepage Shorts Shelf (`ShortsShelf.jsx`):** Horizontal scrollable carousel of vertical 9:16 Shorts cards with red Shorts icon badge, views count, and channel attribution.
+- **Shorts Upload Mode (`VideoUploadPage.jsx`):** Integrated "Long-form Video" vs "VidTube Short" tab selector. Enforces vertical 9:16 preview, max 60-second duration validation, sound attribution field, and direct upload signature targeting `vidtube/shorts`.
+- **Creator Studio Shorts Management (`MyVideosPage.jsx`):** "Videos" vs "Shorts" tab view displaying 9:16 vertical thumbnails, visibility badges, sound attribution, edit metadata modal, and permanent deletion.
+
+### 4. View Tracking & Cooldown Policy
+- **Endpoint:** `POST /api/shorts/:id/view`
+- **Legitimate Qualification:** Requires minimum 2s watch time threshold.
+- **30-Second Debounce Cooldown:** In-memory view deduplication cache prevents refresh abuse from the same IP/user.
+
+---
+
+## 📡 API Specification — Shorts (`/api/shorts`)
+
+| Method | Endpoint | Description | Auth Required |
+|---|---|---|---|
+| `POST` | `/api/shorts/upload-signature` | Generate secure upload signature for Cloudinary `vidtube/shorts` | **Yes** |
+| `POST` | `/api/shorts` | Create Short draft metadata record (validated duration <= 60s) | **Yes** |
+| `POST` | `/api/shorts/:id/complete` | Confirm completed Short upload with dimensions & duration | **Yes (Owner)** |
+| `GET` | `/api/shorts` | Paginated public Shorts feed (excludes unlisted & private) | No |
+| `GET` | `/api/shorts/my-shorts` | Creator Studio Shorts list with visibility & status filters | **Yes** |
+| `GET` | `/api/shorts/:id` | Fetch single Short by ID (enforces private authorization) | Optional |
+| `POST` | `/api/shorts/:id/view` | Record legitimate Short view with 30s cooldown debounce | Optional |
+| `PATCH` | `/api/shorts/:id` | Update Short metadata (title, description, soundTitle, tags) | **Yes (Owner)** |
+| `PATCH` | `/api/shorts/:id/visibility` | Update Short visibility (public / unlisted / private) | **Yes (Owner)** |
+| `DELETE` | `/api/shorts/:id` | Delete Short and purge Cloudinary media asset | **Yes (Owner)** |
 
 ---
 
@@ -171,9 +230,12 @@ npm run build
 
 ## 🧪 Testing & Verification
 
-VidTube maintains automated test suites covering all completed phases (64/64 passing tests):
+VidTube maintains automated test suites covering all completed phases (88/88 passing tests):
 
 ```bash
+# Run Phase 5 Shorts Upload & Vertical Feed test suite (24 tests)
+npm run test:shorts --workspace=server
+
 # Run Phase 4 Video Playback & Streaming test suite (24 tests)
 npm run test:playback --workspace=server
 
@@ -183,6 +245,32 @@ npm run test:video --workspace=server
 # Run Phase 2 Authentication & Security test suite (18 tests)
 npm run test:auth --workspace=server
 ```
+
+### Verified Phase 5 Test Cases (24/24 Passing):
+1. ✅ Health check endpoint returns healthy system and connected database
+2. ✅ Unauthenticated requests to protected Shorts endpoints return 401
+3. ✅ Creator Alice and Viewer Bob registered successfully with channels
+4. ✅ Shorts upload signature endpoint returns valid signing data with folder `vidtube/shorts`
+5. ✅ Short creation without title returns 400 Bad Request
+6. ✅ Short creation with duration exceeding 60s returns 400 Bad Request
+7. ✅ Short creation with title exceeding 100 chars returns 400 Bad Request
+8. ✅ Public Short created with 9:16 aspect ratio, sound attribution, and ready status
+9. ✅ Short upload completion sets status to ready with width, height, and duration
+10. ✅ Unlisted Short created successfully
+11. ✅ Private Short created successfully
+12. ✅ Public Shorts feed includes public ready short and excludes unlisted and private shorts
+13. ✅ Shorts feed populates channel details (name, handle, avatarUrl, subscriberCount)
+14. ✅ Unlisted Short is accessible via direct ID lookup
+15. ✅ Viewer Bob attempting to access Alice private Short is rejected with 403 Forbidden
+16. ✅ Owner Alice can access her own private Short
+17. ✅ Creator Alice retrieves all her shorts (public, unlisted, private) while Bob has 0 shorts
+18. ✅ Creator Studio filter by `visibility=private` returns only private shorts
+19. ✅ First view tracking call increments short views count and returns `counted: true`
+20. ✅ Immediate repeated view from same IP within 30s is debounced with cooldown notice
+21. ✅ Viewer Bob attempting to update Alice short returns 403 Forbidden
+22. ✅ Owner Alice updates Short title, description, and soundTitle successfully
+23. ✅ Owner toggles Short visibility to private, instantly removing it from public feed
+24. ✅ Owner Alice permanently deletes Short; subsequent queries return 404
 
 ### Verified Phase 4 Test Cases (24/24 Passing):
 1. ✅ Health check endpoint returns healthy system and connected database

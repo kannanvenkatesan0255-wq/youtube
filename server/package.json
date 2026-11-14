@@ -8,7 +8,8 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "lint": "eslint src/",
-    "test": "node src/tests/playback.test.js",
+    "test": "node src/tests/shorts.test.js",
+    "test:shorts": "node src/tests/shorts.test.js",
     "test:playback": "node src/tests/playback.test.js",
     "test:video": "node src/tests/video.test.js",
     "test:auth": "node src/tests/auth.test.js"
