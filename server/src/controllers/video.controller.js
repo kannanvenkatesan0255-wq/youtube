@@ -1,18 +1,38 @@
 /**
  * Video Controller
- * VidTube Platform Architecture - Phase 3 Video Upload & Management Engine
+ * VidTube Platform Architecture - Phase 3 & 4 Video Management, Playback & Streaming Engine
  */
 const Video = require('../models/Video');
 const Channel = require('../models/Channel');
+const WatchHistory = require('../models/WatchHistory');
 const { ApiError } = require('../utils/apiError');
 const { ApiResponse } = require('../utils/apiResponse');
 const {
   generateUploadSignature,
   deleteCloudinaryAsset,
+  generateHlsUrl,
   isCloudinaryConfigured
 } = require('../services/cloudinary.service');
 const { logger } = require('../utils/logger');
-const { VIDEO_VISIBILITY, VIDEO_PROCESSING_STATUS } = require('../constants/appConstants');
+const {
+  VIDEO_VISIBILITY,
+  VIDEO_PROCESSING_STATUS,
+  VIEW_TRACKING
+} = require('../constants/appConstants');
+
+// In-memory view deduplication cache: key = `${videoId}:${viewerId}`, val = timestamp
+const viewCache = new Map();
+
+// Periodic cleanup of viewCache every 10 minutes to prevent memory leaks
+setInterval(() => {
+  const now = Date.now();
+  const maxAge = 15 * 60 * 1000;
+  for (const [key, timestamp] of viewCache.entries()) {
+    if (now - timestamp > maxAge) {
+      viewCache.delete(key);
+    }
+  }
+}, 10 * 60 * 1000).unref();
 
 /**
  * @route   POST /api/videos/upload-signature
@@ -170,6 +190,7 @@ const completeUpload = async (req, res, next) => {
     // Update video metadata from Cloudinary response
     video.videoUrl = videoUrl;
     video.publicId = publicId;
+    video.hlsUrl = req.body.hlsUrl || generateHlsUrl(publicId, videoUrl);
     if (thumbnailUrl) video.thumbnailUrl = thumbnailUrl;
     if (thumbnailPublicId) video.thumbnailPublicId = thumbnailPublicId;
     video.duration = duration;
@@ -555,6 +576,322 @@ const deleteVideo = async (req, res, next) => {
   }
 };
 
+/**
+ * @route   GET /api/videos/:id/playback
+ * @desc    Get authorized playback stream info, HLS manifest, and player metadata
+ * @access  Public / Private (Enforces video visibility rules)
+ */
+const getPlaybackInfo = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const video = await Video.findById(id)
+      .populate('channel', 'name handle avatar isVerified subscribersCount')
+      .populate('owner', 'name username avatar');
+
+    if (!video) {
+      return next(new ApiError(404, 'Video not found.'));
+    }
+
+    // Visibility Check: Private video requires owner or admin
+    if (video.visibility === VIDEO_VISIBILITY.PRIVATE) {
+      const isOwner = req.user && (video.owner._id.equals(req.user._id) || req.user.role === 'admin');
+      if (!isOwner) {
+        return next(
+          new ApiError(403, 'This video is private. You do not have permission to play it.')
+        );
+      }
+    }
+
+    // Check processing status
+    if (video.processingStatus === VIDEO_PROCESSING_STATUS.FAILED) {
+      return next(new ApiError(422, 'Video processing failed and media is unavailable for playback.'));
+    }
+
+    // Resolve or generate adaptive HLS URL
+    const hlsUrl = video.hlsUrl || generateHlsUrl(video.publicId, video.videoUrl);
+
+    // Build authorized playback payload
+    const playbackData = {
+      _id: video._id,
+      title: video.title,
+      description: video.description,
+      videoUrl: video.videoUrl,
+      hlsUrl: hlsUrl || null,
+      hasHls: Boolean(hlsUrl),
+      format: video.format || 'mp4',
+      duration: video.duration || 0,
+      resolution: video.resolution || (video.height >= 1080 ? '1080p' : video.height >= 720 ? '720p' : '480p'),
+      width: video.width || 0,
+      height: video.height || 0,
+      aspectRatio: video.aspectRatio || '16:9',
+      thumbnailUrl: video.thumbnailUrl,
+      views: video.views,
+      likesCount: video.likesCount,
+      dislikesCount: video.dislikesCount,
+      category: video.category,
+      tags: video.tags,
+      visibility: video.visibility,
+      processingStatus: video.processingStatus,
+      channel: video.channel,
+      owner: video.owner,
+      isOwner: req.user ? (video.owner._id?.equals(req.user._id) || video.owner.equals(req.user._id)) : false,
+      publishedAt: video.publishedAt || video.createdAt,
+      createdAt: video.createdAt
+    };
+
+    return res.status(200).json(
+      ApiResponse.success(playbackData, 'Playback details retrieved successfully.')
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @route   POST /api/videos/:id/view
+ * @desc    Record legitimate video view with server-side debounce and cooldown
+ * @access  Public (Optional auth for registered viewers)
+ */
+const trackVideoView = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { watchTime } = req.body;
+
+    const video = await Video.findById(id);
+    if (!video) {
+      return next(new ApiError(404, 'Video not found.'));
+    }
+
+    // If private, ensure caller is authorized
+    if (video.visibility === VIDEO_VISIBILITY.PRIVATE) {
+      const isOwner = req.user && (video.owner.equals(req.user._id) || req.user.role === 'admin');
+      if (!isOwner) {
+        return next(new ApiError(403, 'Cannot track view for unauthorized private video.'));
+      }
+    }
+
+    // Deduplication check
+    const viewerId = req.user
+      ? `user:${req.user._id}`
+      : `ip:${req.ip || req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown'}`;
+    const cacheKey = `${id}:${viewerId}`;
+    const now = Date.now();
+    const lastViewed = viewCache.get(cacheKey);
+    const cooldownMs = VIEW_TRACKING.COOLDOWN_SECONDS * 1000;
+
+    if (lastViewed && (now - lastViewed < cooldownMs)) {
+      return res.status(200).json(
+        ApiResponse.success(
+          {
+            views: video.views,
+            incremented: false,
+            cooldownRemainingSeconds: Math.ceil((cooldownMs - (now - lastViewed)) / 1000)
+          },
+          'View already counted recently (cooldown active).'
+        )
+      );
+    }
+
+    // Minimum watch-time verification (if provided)
+    if (watchTime !== undefined && watchTime < VIEW_TRACKING.MIN_WATCH_SECONDS) {
+      return res.status(200).json(
+        ApiResponse.success(
+          { views: video.views, incremented: false },
+          `Watch duration must be at least ${VIEW_TRACKING.MIN_WATCH_SECONDS}s to record view.`
+        )
+      );
+    }
+
+    // Increment video views and channel totalViews atomically
+    const updatedVideo = await Video.findByIdAndUpdate(
+      id,
+      { $inc: { views: 1 } },
+      { new: true }
+    );
+
+    if (video.channel) {
+      await Channel.findByIdAndUpdate(video.channel, { $inc: { totalViews: 1 } });
+    }
+
+    viewCache.set(cacheKey, now);
+
+    return res.status(200).json(
+      ApiResponse.success(
+        {
+          views: updatedVideo.views,
+          incremented: true
+        },
+        'Video view recorded successfully.'
+      )
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @route   POST /api/videos/:id/progress
+ * @desc    Save playback progress for continue-watching and resume
+ * @access  Private (Authenticated users only)
+ */
+const savePlaybackProgress = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { progress, duration } = req.body;
+
+    const video = await Video.findById(id);
+    if (!video) {
+      return next(new ApiError(404, 'Video not found.'));
+    }
+
+    // Private video check
+    if (video.visibility === VIDEO_VISIBILITY.PRIVATE) {
+      const isOwner = video.owner.equals(req.user._id) || req.user.role === 'admin';
+      if (!isOwner) {
+        return next(new ApiError(403, 'Cannot save progress for private video.'));
+      }
+    }
+
+    const watchedSeconds = Math.max(0, Math.floor(progress));
+    const totalDuration = Math.max(0, Math.floor(duration || video.duration || 0));
+    const completed = totalDuration > 0 ? (watchedSeconds / totalDuration >= 0.9) : false;
+
+    const history = await WatchHistory.findOneAndUpdate(
+      { user: req.user._id, video: id },
+      {
+        $set: {
+          watchedSeconds,
+          duration: totalDuration,
+          completed,
+          lastWatchedAt: new Date()
+        }
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    return res.status(200).json(
+      ApiResponse.success(
+        {
+          videoId: id,
+          progress: history.watchedSeconds,
+          duration: history.duration,
+          completed: history.completed,
+          lastWatchedAt: history.lastWatchedAt
+        },
+        'Playback progress saved successfully.'
+      )
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @route   GET /api/videos/:id/progress
+ * @desc    Retrieve saved playback progress to resume watching
+ * @access  Private (Authenticated users only)
+ */
+const getPlaybackProgress = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const history = await WatchHistory.findOne({
+      user: req.user._id,
+      video: id
+    });
+
+    if (!history) {
+      return res.status(200).json(
+        ApiResponse.success(
+          { progress: 0, duration: 0, completed: false, hasHistory: false },
+          'No watch progress found for this video.'
+        )
+      );
+    }
+
+    return res.status(200).json(
+      ApiResponse.success(
+        {
+          videoId: id,
+          progress: history.watchedSeconds,
+          duration: history.duration,
+          completed: history.completed,
+          lastWatchedAt: history.lastWatchedAt,
+          hasHistory: true
+        },
+        'Playback progress retrieved successfully.'
+      )
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @route   GET /api/videos/:id/related
+ * @desc    Get related video recommendations excluding current video
+ * @access  Public
+ */
+const getRelatedVideos = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const limit = Math.min(30, Math.max(1, parseInt(req.query.limit, 10) || 15));
+
+    const currentVideo = await Video.findById(id);
+    if (!currentVideo) {
+      return next(new ApiError(404, 'Video not found.'));
+    }
+
+    const baseFilter = {
+      _id: { $ne: currentVideo._id },
+      visibility: VIDEO_VISIBILITY.PUBLIC,
+      processingStatus: VIDEO_PROCESSING_STATUS.READY
+    };
+
+    // Primary search: same category or matching tags
+    const categoryFilter = {
+      ...baseFilter,
+      $or: [
+        { category: currentVideo.category },
+        { tags: { $in: currentVideo.tags || [] } }
+      ]
+    };
+
+    let related = await Video.find(categoryFilter)
+      .sort({ views: -1, createdAt: -1 })
+      .limit(limit)
+      .populate('channel', 'name handle avatar isVerified')
+      .lean();
+
+    // If fewer than limit, backfill with general public ready videos
+    if (related.length < limit) {
+      const existingIds = [currentVideo._id, ...related.map((v) => v._id)];
+      const backfillLimit = limit - related.length;
+      const backfill = await Video.find({
+        _id: { $nin: existingIds },
+        visibility: VIDEO_VISIBILITY.PUBLIC,
+        processingStatus: VIDEO_PROCESSING_STATUS.READY
+      })
+        .sort({ createdAt: -1 })
+        .limit(backfillLimit)
+        .populate('channel', 'name handle avatar isVerified')
+        .lean();
+
+      related = [...related, ...backfill];
+    }
+
+    return res.status(200).json(
+      ApiResponse.success(
+        { videos: related, count: related.length },
+        'Related videos retrieved successfully.'
+      )
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getUploadSignature,
   createVideo,
@@ -562,6 +899,11 @@ module.exports = {
   getPublicVideos,
   getMyVideos,
   getVideoById,
+  getPlaybackInfo,
+  trackVideoView,
+  savePlaybackProgress,
+  getPlaybackProgress,
+  getRelatedVideos,
   updateVideo,
   updateThumbnail,
   updateVisibility,

@@ -144,3 +144,41 @@ VidTube strictly enforces YouTube's design tokens:
 - **Private**: Excluded from public query; accessible via `GET /api/videos/:id` only if the authenticated user is the video owner or has an admin role. Returns HTTP 403 Forbidden to all other users.
 - **Modifications & Deletions**: Enforce strict ownership checks (`video.owner.equals(req.user._id)`). Unauthorized attempts return HTTP 403. Deletion triggers `cloudinary.uploader.destroy(publicId)` and decrements channel `videosCount`.
 
+---
+
+## 6. Phase 4 Video Playback, HLS Streaming & View Tracking Architecture
+
+### Adaptive Streaming Pipeline
+
+```
+[Client / WatchPage]
+       │
+       ├── 1. GET /api/videos/:id/playback
+       │      Returns: { videoUrl, hlsUrl, duration, resolution, channel, isOwner }
+       │
+       ├── 2. Playback Resolution Decision Engine:
+       │      ┌────────────────────────────────────────────────────────┐
+       │      │ If hlsUrl provided & Native HLS supported (Safari/iOS) │ ──> Native WebKit HLS
+       │      ├────────────────────────────────────────────────────────┤
+       │      │ Else if hlsUrl provided & Hls.isSupported() (Chrome/FF)│ ──> Hls.js Multi-Bitrate
+       │      │ (Auto level switching + manual 1080p/720p/480p/360p)   │
+       │      ├────────────────────────────────────────────────────────┤
+       │      │ Else / If HLS fatal load failure                       │ ──> Direct HTML5 MP4 Stream
+       │      └────────────────────────────────────────────────────────┘
+       │
+       ├── 3. View Qualification (Client watches >= 5s cumulative):
+       │      POST /api/videos/:id/view { watchTime: 5 }
+       │      Backend checks in-memory cooldown cache (${videoId}:${user|ip}, 30s TTL).
+       │      Atomically increments Video.views and Channel.totalViews.
+       │
+       └── 4. Playback Progress Sync (Authenticated):
+              POST /api/videos/:id/progress (every 15s & on pause/unmount)
+              Upserts WatchHistory document. Automatically sets completed: true if progress >= 90%.
+```
+
+### View Tracking & Cooldown Policy
+- **Cooldown Cache**: Keyed by `${videoId}:${userId || ip}` with a 30-second debounce window.
+- **Qualification Threshold**: Requires `watchTime >= 5` seconds to prevent crawler or accidental hit counting.
+- **Atomic MongoDB Counter**: Uses `$inc: { views: 1 }` on `Video` and `$inc: { totalViews: 1 }` on `Channel`.
+
+

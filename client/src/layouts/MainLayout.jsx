@@ -3,6 +3,7 @@
  * Handles YouTube responsive margins, header, sidebars, and mobile bottom nav
  */
 import React from 'react';
+import { useLocation } from 'react-router-dom';
 import Header from '../components/layout/Header';
 import Sidebar from '../components/layout/Sidebar';
 import MiniSidebar from '../components/layout/MiniSidebar';
@@ -12,10 +13,12 @@ import { useSidebar } from '../hooks/useSidebar';
 
 export const MainLayout = ({ children }) => {
   const { isCollapsed, isMobileScreen } = useSidebar();
+  const location = useLocation();
+  const isWatchPage = location.pathname.startsWith('/watch/');
 
   // Compute margin left for content based on sidebar state
   const getContentMarginClass = () => {
-    if (isMobileScreen) return 'ml-0';
+    if (isMobileScreen || isWatchPage) return 'ml-0';
     return isCollapsed ? 'ml-[72px]' : 'ml-60';
   };
 

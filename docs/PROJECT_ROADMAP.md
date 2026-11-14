@@ -10,8 +10,8 @@ VidTube is a production-oriented, full-stack video sharing and adaptive streamin
 |---|---|---|---|
 | **Phase 1** | **Project Architecture & UI Shell** | Foundation, Monorepo, YouTube Exact Shell, MongoDB Setup, Health API | **COMPLETED** (`d342b80`) |
 | **Phase 2** | **Authentication & Security Engine** | JWT, bcrypt, Refresh Tokens, Cookie Sessions, Cloudinary Auth, Profile | **COMPLETED** (`05c768f`) |
-| **Phase 3** | **Video Upload, Storage & Management** | Direct Signed Cloudinary Uploads, Metadata, Privacy, Creator Studio | **COMPLETED** |
-| **Phase 4** | **Video Streaming & Custom Video Player** | HTML5 Custom Video Player, Quality Selector, Theater Mode, Fullscreen | *Scheduled* |
+| **Phase 3** | **Video Upload, Storage & Management** | Direct Signed Cloudinary Uploads, Metadata, Privacy, Creator Studio | **COMPLETED** (`ed4929a`) |
+| **Phase 4** | **Video Player, Watch Page & Streaming** | Custom Video Player, Hls.js Adaptive Streaming, Watch Page, Views | **COMPLETED** |
 | **Phase 5** | **VidTube Shorts & Vertical Player** | 9:16 Vertical Video Engine, Infinite Scroll, Sound Overlay, Gestures | *Scheduled* |
 | **Phase 6** | **Engagement & Community System** | Nested Comment Threads, Like/Dislike, Mentions, Real-Time Badges | *Scheduled* |
 | **Phase 7** | **Subscriptions, Playlists & Library** | Channel Subscriptions, Bell Notifications, Custom Playlists, Watch Later | *Scheduled* |
@@ -62,14 +62,28 @@ VidTube is a production-oriented, full-stack video sharing and adaptive streamin
   - Header "+ Create" button dynamically routes to `/upload` (or `/login`).
   - Homepage (`/`) integrates public videos with seamless fallback to sample showcase videos.
 
-### Phase 4: Video Streaming & Custom Video Player (Next)
-- Custom HTML5 Video Player with YouTube controls.
-- Play, pause, seek, volume, speed control (0.25x to 2x).
-- Theater mode, mini-player, and fullscreen modes.
-- Keyboard shortcuts (Space/K for play/pause, J/L for 10s skip, M for mute, F for fullscreen).
-- Video details view, channel subscribe card, and description expand/collapse.
+### Phase 4: Video Player, Watch Page & Adaptive Streaming Engine (Completed)
+- **Adaptive Video Player (`VideoPlayer.jsx`):**
+  - Powered by Hls.js for multi-bitrate HLS (`.m3u8`) playback with automatic resolution detection.
+  - Native HLS support on Apple WebKit (Safari / iOS).
+  - Graceful automatic fallback to standard HTML5 MP4 playback if HLS manifest is unavailable or encounters network errors.
+  - YouTube custom player controls: interactive timeline scrubber with buffered ranges, ghost hover preview, volume slider with mute toggle (`m`), time display, speed menu (0.25x to 2x), quality selector menu (`Auto` + renditions), theater mode (`t`), fullscreen (`f`), Picture-in-Picture (`i`).
+  - Keyboard shortcuts with input-element protection.
+- **YouTube Watch Page (`/watch/:videoId`):**
+  - Responsive two-column layout on desktop, top player in theater mode, touch-friendly on mobile.
+  - Channel info card with subscriber count and toggleable Subscribe button.
+  - Action pills: Like / Dislike with live counts, Share button with clipboard copy toast, Save.
+  - Expandable description card with views, timestamp, category badge, and `#tag` pills.
+  - Related video recommendations feed excluding current video and private videos.
+- **View Tracking & Anti-Spam Policy (`POST /api/videos/:id/view`):**
+  - Requires minimum 5s watch time qualification.
+  - 30-second cooldown per IP / user to avoid duplicate view inflation.
+  - Atomic counter increments for both video `views` and channel `totalViews`.
+- **Playback Progress & Resume Engine (`WatchHistory` model):**
+  - Records watched seconds, duration, and completion status (>= 90%).
+  - Automatically resumes playback from saved position for authenticated viewers with notification toast.
 
-### Phase 5: VidTube Shorts
+### Phase 5: VidTube Shorts & Vertical Player (Next)
 - Vertical video upload pipeline (max 60 seconds).
 - TikTok/YouTube Shorts-style full-screen vertical swipeable player.
 - Keyboard navigation (Up/Down arrow keys) and mobile swipe gestures.

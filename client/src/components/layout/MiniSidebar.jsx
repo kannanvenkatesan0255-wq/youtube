@@ -3,15 +3,16 @@
  * Matches YouTube's desktop collapsed sidebar layout
  */
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { Home, Film, Tv, UserCheck } from 'lucide-react';
 import { useSidebar } from '../../hooks/useSidebar';
 
 export const MiniSidebar = () => {
   const { isCollapsed, isMobileScreen } = useSidebar();
+  const location = useLocation();
 
-  // MiniSidebar is only visible on desktop/tablet when collapsed is true
-  if (!isCollapsed || isMobileScreen) {
+  // MiniSidebar is hidden on watch page or on mobile, or when expanded
+  if (location.pathname.startsWith('/watch/') || !isCollapsed || isMobileScreen) {
     return null;
   }
 

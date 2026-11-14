@@ -3,6 +3,7 @@
  * Reproduces YouTube's exact navigation structure and styling
  */
 import React from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   Home,
   Film,
@@ -30,9 +31,11 @@ import { SAMPLE_CHANNELS } from '../../utils/sampleData';
 
 export const Sidebar = () => {
   const { isCollapsed, isMobileOpen, isMobileScreen, closeMobileSidebar } = useSidebar();
+  const location = useLocation();
+  const isWatchPage = location.pathname.startsWith('/watch/');
 
   // If on desktop and collapsed, the MiniSidebar is rendered instead
-  if (isCollapsed && !isMobileScreen) {
+  if (!isWatchPage && isCollapsed && !isMobileScreen) {
     return null;
   }
 
@@ -141,8 +144,8 @@ export const Sidebar = () => {
     </aside>
   );
 
-  // If Mobile Screen, render drawer with backdrop
-  if (isMobileScreen) {
+  // If Mobile Screen or Watch Page, render drawer with backdrop
+  if (isMobileScreen || isWatchPage) {
     if (!isMobileOpen) return null;
 
     return (

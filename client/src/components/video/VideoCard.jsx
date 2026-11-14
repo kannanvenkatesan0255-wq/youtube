@@ -3,6 +3,7 @@
  * Exact reproduction of YouTube video card layout, metadata, badges, and hover actions
  */
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { MoreVertical } from 'lucide-react';
 import Avatar from '../common/Avatar';
 import { DurationBadge, VerifiedBadge } from '../common/Badge';
@@ -10,6 +11,9 @@ import { formatViews, formatTimeAgo, formatDuration } from '../../utils/formatte
 
 export const VideoCard = ({ video }) => {
   if (!video) return null;
+
+  const videoId = video._id || video.id;
+  const watchUrl = `/watch/${videoId}`;
 
   const durationFormatted = typeof video.duration === 'number'
     ? formatDuration(video.duration)
@@ -24,9 +28,12 @@ export const VideoCard = ({ video }) => {
     : 'Recently';
 
   return (
-    <article className="group flex flex-col cursor-pointer select-none">
+    <article className="group flex flex-col select-none">
       {/* Thumbnail Container (16:9 ratio) */}
-      <div className="relative aspect-video w-full rounded-xl overflow-hidden bg-neutral-200 dark:bg-neutral-800 transition-all duration-200 group-hover:rounded-none group-hover:shadow-md">
+      <Link
+        to={watchUrl}
+        className="relative aspect-video w-full rounded-xl overflow-hidden bg-neutral-200 dark:bg-neutral-800 transition-all duration-200 group-hover:rounded-none group-hover:shadow-md block"
+      >
         <img
           src={video.thumbnailUrl}
           alt={video.title}
@@ -35,7 +42,7 @@ export const VideoCard = ({ video }) => {
         />
         {/* Video Duration Badge */}
         <DurationBadge durationText={durationFormatted} />
-      </div>
+      </Link>
 
       {/* Video Details & Channel Info */}
       <div className="flex gap-3 items-start mt-3 px-0.5">
@@ -51,12 +58,14 @@ export const VideoCard = ({ video }) => {
         {/* Video Metadata */}
         <div className="flex-1 min-w-0 pr-1">
           {/* Video Title (2 lines clamp) */}
-          <h3
-            className="text-sm font-semibold leading-snug line-clamp-2 text-[#0f0f0f] dark:text-[#f1f1f1] group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors"
-            title={video.title}
-          >
-            {video.title}
-          </h3>
+          <Link to={watchUrl}>
+            <h3
+              className="text-sm font-semibold leading-snug line-clamp-2 text-[#0f0f0f] dark:text-[#f1f1f1] group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors"
+              title={video.title}
+            >
+              {video.title}
+            </h3>
+          </Link>
 
           {/* Channel Name */}
           <div className="flex items-center gap-1.5 mt-1 text-xs text-[#606060] dark:text-[#aaaaaa] hover:text-[#0f0f0f] dark:hover:text-[#f1f1f1] transition-colors">

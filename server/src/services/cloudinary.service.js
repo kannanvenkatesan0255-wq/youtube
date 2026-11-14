@@ -105,9 +105,47 @@ const deleteCloudinaryAsset = async (publicId, resourceType = 'video') => {
   }
 };
 
+/**
+ * Generate Adaptive HLS Streaming URL (.m3u8) from Cloudinary Asset
+ * Cloudinary generates dynamic multi-bitrate HLS playlists using streaming profiles (sp_auto)
+ */
+const generateHlsUrl = (publicId, videoUrl) => {
+  if (!publicId && !videoUrl) return '';
+
+  // If videoUrl is already an HLS manifest, return directly
+  if (videoUrl && videoUrl.includes('.m3u8')) {
+    return videoUrl;
+  }
+
+  // If Cloudinary SDK is fully configured and publicId exists, generate standard adaptive HLS URL
+  if (config.cloudinary.isConfigured && publicId) {
+    try {
+      return cloudinary.url(publicId, {
+        resource_type: 'video',
+        format: 'm3u8',
+        streaming_profile: 'auto',
+        secure: true
+      });
+    } catch {
+      // Fall through to URL manipulation
+    }
+  }
+
+  // If videoUrl is a Cloudinary video URL, construct the standard streaming profile transformation URL
+  if (videoUrl && videoUrl.includes('/video/upload/')) {
+    const parts = videoUrl.split('/video/upload/');
+    const base = parts[0] + '/video/upload/sp_auto/';
+    const assetPart = parts[1].replace(/\.[^/.]+$/, '.m3u8');
+    return base + assetPart;
+  }
+
+  return '';
+};
+
 module.exports = {
   generateUploadSignature,
   uploadStream,
   deleteCloudinaryAsset,
+  generateHlsUrl,
   isCloudinaryConfigured: () => config.cloudinary.isConfigured
 };

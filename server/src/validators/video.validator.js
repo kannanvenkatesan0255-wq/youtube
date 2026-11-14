@@ -157,10 +157,42 @@ const validateVisibilityUpdate = (req, res, next) => {
   next();
 };
 
+/**
+ * Validate Playback Progress Update
+ */
+const validatePlaybackProgress = (req, res, next) => {
+  const { progress, duration } = req.body;
+
+  if (progress === undefined || typeof progress !== 'number' || isNaN(progress) || progress < 0) {
+    return next(new ApiError(400, 'Valid progress in seconds (number >= 0) is required.'));
+  }
+
+  if (duration !== undefined && (typeof duration !== 'number' || isNaN(duration) || duration < 0)) {
+    return next(new ApiError(400, 'Duration must be a positive number of seconds.'));
+  }
+
+  next();
+};
+
+/**
+ * Validate View Tracking
+ */
+const validateViewTracking = (req, res, next) => {
+  const { watchTime } = req.body;
+
+  if (watchTime !== undefined && (typeof watchTime !== 'number' || isNaN(watchTime) || watchTime < 0)) {
+    return next(new ApiError(400, 'watchTime must be a positive number.'));
+  }
+
+  next();
+};
+
 module.exports = {
   validateCreateVideo,
   validateUpdateVideo,
   validateCompleteUpload,
   validateThumbnailUpdate,
-  validateVisibilityUpdate
+  validateVisibilityUpdate,
+  validatePlaybackProgress,
+  validateViewTracking
 };

@@ -27,6 +27,15 @@ const videoSchema = new mongoose.Schema(
       type: String,
       default: '' // Can be empty during initial metadata creation before upload completes
     },
+    hlsUrl: {
+      type: String,
+      default: '' // Cloudinary or streaming HLS (.m3u8) adaptive playlist URL
+    },
+    streamingProfiles: [
+      {
+        type: String // Available adaptive renditions, e.g. ['auto', '1080p', '720p', '480p', '360p']
+      }
+    ],
     publicId: {
       type: String,
       default: '' // Cloudinary video asset public ID

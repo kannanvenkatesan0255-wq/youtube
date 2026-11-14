@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "axios": "^1.7.9",
+    "hls.js": "^1.7.4",
     "lucide-react": "^0.475.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -35,4 +36,3 @@
   "author": "VidTube Team",
   "license": "ISC"
 }
-

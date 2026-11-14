@@ -13,6 +13,7 @@ import ResetPasswordPage from '../pages/auth/ResetPasswordPage';
 import ProfilePage from '../pages/account/ProfilePage';
 import VideoUploadPage from '../pages/studio/VideoUploadPage';
 import MyVideosPage from '../pages/studio/MyVideosPage';
+import WatchPage from '../pages/WatchPage';
 import PlaceholderPage from '../pages/PlaceholderPage';
 import NotFoundPage from '../pages/NotFoundPage';
 import { ProtectedRoute, GuestRoute } from '../components/navigation/RouteGuards';
@@ -23,6 +24,9 @@ export const AppRoutes = () => {
       <Routes>
         {/* Core Discovery */}
         <Route path="/" element={<HomePage />} />
+
+        {/* Phase 4: Video Watch Page & Adaptive Streaming Engine */}
+        <Route path="/watch/:videoId" element={<WatchPage />} />
 
         {/* Guest-only Authentication Routes */}
         <Route

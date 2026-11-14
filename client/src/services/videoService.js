@@ -49,6 +49,41 @@ export const videoService = {
   },
 
   /**
+   * Retrieve authorized playback streaming details (HLS / MP4 with renditions)
+   */
+  getPlaybackInfo: (id) => {
+    return api.get(`/videos/${id}/playback`);
+  },
+
+  /**
+   * Record legitimate video view with cooldown debounce
+   */
+  trackView: (id, payload = {}) => {
+    return api.post(`/videos/${id}/view`, payload);
+  },
+
+  /**
+   * Save playback progress for resume and continue watching
+   */
+  saveProgress: (id, progressData) => {
+    return api.post(`/videos/${id}/progress`, progressData);
+  },
+
+  /**
+   * Retrieve saved playback progress for resume
+   */
+  getProgress: (id) => {
+    return api.get(`/videos/${id}/progress`);
+  },
+
+  /**
+   * Retrieve related video recommendations
+   */
+  getRelatedVideos: (id, params = {}) => {
+    return api.get(`/videos/${id}/related`, { params });
+  },
+
+  /**
    * Update video metadata (title, description, category, tags, visibility, etc.)
    */
   updateVideo: (id, videoData) => {
