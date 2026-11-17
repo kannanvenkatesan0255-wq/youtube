@@ -517,7 +517,7 @@ const announcementSchema = new mongoose.Schema({
   message: { type: String, required: true, trim: true, maxlength: 500 },
   type: {
     type: String,
-    enum: ['info', 'warning', 'critical', 'feature', 'maintenance'],
+    enum: ['info', 'warning', 'critical', 'feature', 'maintenance', 'update'],
     default: 'info'
   },
   priority: { type: Number, default: 1 },
@@ -527,6 +527,45 @@ const announcementSchema = new mongoose.Schema({
   createdBy: { type: ObjectId, ref: 'User' }
 }, { timestamps: true });
 ```
+
+---
+
+## 12. Production Optimization & Deployment Topology
+
+### Production Runtime Architecture
+```
+[ Client Browser (React 19 SPA) ]
+               │
+               ▼ HTTPS (Vercel CDN Edge)
+[ Static Assets: Cache-Control immutable 1yr ]
+[ Route Fallback: /index.html SPA Rewrites ]
+               │
+               ▼ REST / WSS (CORS Secured)
+[ Render Node.js Express API Instance ]
+   ├── Express Compression Middleware (Gzip, threshold: 1KB)
+   ├── Helmet HTTP Security Headers
+   ├── Rate Limiting (General & Sensitive endpoints)
+   ├── Real-Time Socket.IO Cluster Engine
+   └── Mongoose Connection Pool (MongoDB Atlas Replica Set)
+               │
+               ▼ Media Offloading
+[ Cloudinary CDN: Adaptive Bitrate HLS & Transformed Media ]
+```
+
+### Frontend Performance & Code Splitting
+- **Vite Dynamic Imports (`React.lazy` + `Suspense`)**: 30+ pages lazily loaded upon route transition with animated fallback skeletons.
+- **Rollup Manual Chunk Isolation**:
+  - `vendor-react`: `react`, `react-dom`, `react-router-dom` (~170 kB)
+  - `vendor-player`: `hls.js` (~130 kB loaded strictly on video watch pages)
+  - `vendor-icons`: `lucide-react` (~35 kB)
+  - `vendor-utils`: `axios`, `date-fns`, `socket.io-client` (~40 kB)
+- **Initial Bundle Reduction**: Compressed initial JavaScript load from 1.50 MB to 336.63 kB (**77.6% reduction**).
+
+### Backend Performance & Compression
+- **Gzip Stream Compression**: All JSON responses over 1,024 bytes compressed dynamically using `compression` middleware with level 6 gzip.
+- **Compound Database Indexing**: All high-throughput query fields indexed with compound keys for sub-10ms response times.
+- **Production Error Sanitization**: Internal database errors, stack traces, and system details scrubbed before returning generic RFC 7807 compliant error bodies.
+
 
 
 

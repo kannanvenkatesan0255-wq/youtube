@@ -7,6 +7,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
+const compression = require('compression');
 const { config } = require('./config/env');
 const apiRoutes = require('./routes/api.routes');
 const { requestLogger } = require('./middleware/requestLogger');
@@ -19,6 +20,14 @@ const app = express();
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: 'cross-origin' }
+  })
+);
+
+// Response compression for high-performance payload delivery
+app.use(
+  compression({
+    threshold: 1024, // Only compress responses above 1KB
+    level: 6
   })
 );
 
@@ -64,13 +73,22 @@ app.get('/', (req, res) => {
   res.status(200).json({
     success: true,
     platform: 'VidTube API',
-    tagline: 'Professional Full-Stack Video Platform',
+    tagline: 'Professional Full-Stack Video Sharing & Adaptive Streaming Platform',
     version: '1.0.0',
-    phase: 'Phase 2 - Authentication & Security Engine Active',
+    phase: 'Phase 10 — Production Ready & Optimized',
+    status: 'operational',
     endpoints: {
       health: '/api/health',
       auth: '/api/auth',
       users: '/api/users',
+      videos: '/api/videos',
+      shorts: '/api/shorts',
+      channels: '/api/channels',
+      playlists: '/api/playlists',
+      history: '/api/history',
+      recommendations: '/api/recommendations',
+      studio: '/api/studio',
+      admin: '/api/admin',
       apiBase: '/api'
     }
   });

@@ -8,7 +8,9 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "lint": "eslint src/",
-    "test": "node src/tests/admin_moderation.test.js",
+    "test": "node src/tests/production_e2e.test.js",
+    "test:e2e": "node src/tests/production_e2e.test.js",
+    "test:phase10": "node src/tests/production_e2e.test.js",
     "test:phase9": "node src/tests/admin_moderation.test.js",
     "test:phase8": "node src/tests/studio_analytics.test.js",
     "test:phase7": "node src/tests/search_playlists_history.test.js",
@@ -21,6 +23,7 @@
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "cloudinary": "^2.5.1",
+    "compression": "^1.8.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",

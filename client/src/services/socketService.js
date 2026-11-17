@@ -13,9 +13,10 @@ export const socketService = {
   connect: (token) => {
     if (socket && socket.connected) return socket;
 
-    const serverUrl = import.meta.env.VITE_API_URL
-      ? import.meta.env.VITE_API_URL.replace(/\/api$/, '')
-      : 'http://localhost:5000';
+    const serverUrl = import.meta.env.VITE_SOCKET_URL
+      || (import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace(/\/api$/, '') : null)
+      || (import.meta.env.VITE_API_BASE_URL ? import.meta.env.VITE_API_BASE_URL.replace(/\/api$/, '') : null)
+      || 'http://localhost:5000';
 
     socket = io(serverUrl, {
       withCredentials: true,

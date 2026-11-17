@@ -1,0 +1,41 @@
+services:
+  - type: web
+    name: vidtube-api
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm install --workspace=server
+    startCommand: npm run start --workspace=server
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 15m
+      - key: JWT_REFRESH_EXPIRES_IN
+        value: 7d
+      - key: CLIENT_URL
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: MAX_VIDEO_SIZE_MB
+        value: 500
+      - key: MAX_SHORT_SIZE_MB
+        value: 100
+      - key: MAX_SHORT_DURATION_SECONDS
+        value: 60
+      - key: MAX_THUMBNAIL_SIZE_MB
+        value: 10

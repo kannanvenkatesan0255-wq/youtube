@@ -18,7 +18,7 @@ const startServer = async () => {
     // Start HTTP Server
     server = app.listen(config.port, () => {
       console.log('\n==================================================');
-      console.log('   VIDTUBE API SERVER — PHASE 6 ACTIVE');
+      console.log('   VIDTUBE API SERVER — PHASE 10 PRODUCTION READY');
       console.log('==================================================');
       logger.info(`Server running in [${config.nodeEnv}] mode on port: ${config.port}`);
       logger.info(`Health check available at: http://localhost:${config.port}/api/health`);

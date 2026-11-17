@@ -616,33 +616,42 @@ const createReport = async ({ reporterId, contentType, contentId, reason, descri
   let targetDoc = null;
   const cId = new mongoose.Types.ObjectId(contentId);
 
+  const rawType = (contentType || '').trim();
+  const lowerType = rawType.toLowerCase();
+  let normalizedType = rawType;
+  if (lowerType === 'video') normalizedType = 'Video';
+  else if (lowerType === 'short') normalizedType = 'Short';
+  else if (lowerType === 'comment') normalizedType = 'Comment';
+  else if (lowerType === 'channel') normalizedType = 'Channel';
+  else if (lowerType === 'user') normalizedType = 'User';
+
   const reportPayload = {
     reporter: reporterId,
-    contentType,
+    contentType: normalizedType,
     contentId: cId,
     reason,
     description: description.trim()
   };
 
-  if (contentType === 'Video') {
+  if (normalizedType === 'Video') {
     targetDoc = await Video.findById(cId);
     reportPayload.video = cId;
-  } else if (contentType === 'Short') {
+  } else if (normalizedType === 'Short') {
     targetDoc = await Short.findById(cId);
     reportPayload.short = cId;
-  } else if (contentType === 'Comment') {
+  } else if (normalizedType === 'Comment') {
     targetDoc = await Comment.findById(cId);
     reportPayload.comment = cId;
-  } else if (contentType === 'Channel') {
+  } else if (normalizedType === 'Channel') {
     targetDoc = await Channel.findById(cId);
     reportPayload.channel = cId;
-  } else if (contentType === 'User') {
+  } else if (normalizedType === 'User') {
     targetDoc = await User.findById(cId);
     reportPayload.reportedUser = cId;
   }
 
   if (!targetDoc) {
-    throw new ApiError(404, `Reported ${contentType} does not exist.`);
+    throw new ApiError(404, `Reported ${normalizedType} does not exist.`);
   }
 
   // Duplicate report prevention: Check if user already submitted a pending report for this target
