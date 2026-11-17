@@ -344,6 +344,71 @@ $$\text{Score} = \text{Base} + 40 \times \mathbb{I}_{\text{Subscribed}} + 25 \ti
 - **Cold Start / Guest Users**: Falls back to global trending videos ranked by view velocity in the last 72 hours.
 - **Context-Aware Related Videos**: Watch Page sidebar queries `GET /api/recommendations/related/:videoId`, matching category and tags while strictly excluding the currently active video and all private/unlisted content.
 
+---
+
+## 10. Creator Studio & Channel Analytics Architecture (Phase 8)
+
+### Architectural Overview
+
+VidTube Creator Studio (`/studio`) is a dedicated application shell providing creators with comprehensive content management and real database-driven channel performance analytics.
+
+```
+[Creator Workspace: /studio]
+         │
+         ├── 1. Studio Dashboard (/studio):
+         │      - Channel overview cards (views, watch time, subscribers, active uploads)
+         │      - Latest published content card with real-time stats
+         │      - Top videos and top shorts performance widgets
+         │      - Recent comments & subscriber feeds
+         │
+         ├── 2. Unified Content Manager (/studio/content):
+         │      - Unified table for long-form Videos & vertical Shorts
+         │      - Search & filter by content type (video, short) and visibility (public, unlisted, private)
+         │      - In-place metadata editing modal (Title, Description, Visibility, Tags)
+         │      - Cloudinary and MongoDB asset deletion
+         │
+         ├── 3. Channel Analytics (/studio/analytics):
+         │      - Pure React + SVG interactive timeseries with zero-fill continuity
+         │      - Metric switcher: Views, Watch Time, Subscribers, Likes, Comments
+         │      - Period selector: 7d, 28d, 90d, 365d with delta comparisons vs previous period
+         │      - Audience Demographics: Videos vs Shorts views ratio & Subscriber loyalty split
+         │      - Individual content deep-dive (/studio/content/:id/analytics)
+         │
+         ├── 4. Engagement & Organization:
+         │      - Comments Aggregator (/studio/comments): Reply & delete moderation
+         │      - Studio Playlists (/studio/playlists): Playlist management
+         │      - Channel Customization (/studio/customization): Name, unique handle (@handle), description, featured video
+         │      - Studio Settings (/studio/settings): Channel ID, permissions, verification
+         │
+         └── 5. High-Security RFC 4180 CSV Export:
+                - Overview, timeseries, and content CSV exports
+                - Formula Injection Defense: Cells starting with `=, +, -, @, \t, \r` are escaped with `'`
+```
+
+### Event Collection & Analytics Pipeline (`AnalyticsEvent` Model)
+
+```javascript
+const analyticsEventSchema = new mongoose.Schema({
+  channel: { type: ObjectId, ref: 'Channel', required: true, index: true },
+  contentType: { type: String, enum: ['Video', 'Short', 'Channel'], default: 'Video' },
+  contentId: { type: ObjectId },
+  eventType: {
+    type: String,
+    enum: ['view', 'watch_time', 'completion', 'like', 'dislike', 'comment', 'subscribe', 'unsubscribe', 'share'],
+    required: true
+  },
+  value: { type: Number, default: 1 },
+  viewer: { type: ObjectId, ref: 'User' },
+  ipHash: { type: String },
+  createdAt: { type: Date, default: Date.now, index: true }
+});
+```
+
+- **Compound Indexing**: Compound indexes `{ channel: 1, eventType: 1, createdAt: -1 }` and `{ contentId: 1, eventType: 1, createdAt: -1 }` enable lightning-fast aggregation pipelines across millions of records without full collection scans.
+- **Zero-Fill Continuity Algorithm**: Timeseries queries bucket daily counts and backfill every single calendar day in the requested period. Days with zero events render as honest zeroes (flat line at 0), strictly preventing fake synthetic trends or missing data gaps.
+- **Security & Authorization**: All Studio routes enforce JWT authentication and creator channel verification. Modifying or deleting another creator's content is strictly rejected with `HTTP 404/403`.
+
+
 
 
 

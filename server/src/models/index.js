@@ -13,6 +13,7 @@ const Playlist = require('./Playlist');
 const Notification = require('./Notification');
 const WatchHistory = require('./WatchHistory');
 const SearchHistory = require('./SearchHistory');
+const AnalyticsEvent = require('./AnalyticsEvent');
 
 module.exports = {
   User,
@@ -25,6 +26,7 @@ module.exports = {
   Playlist,
   Notification,
   WatchHistory,
-  SearchHistory
+  SearchHistory,
+  AnalyticsEvent
 };
 

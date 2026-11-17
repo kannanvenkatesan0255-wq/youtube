@@ -380,7 +380,7 @@ export const Header = () => {
                           <span>Upload video</span>
                         </Link>
                         <Link
-                          to="/studio/videos"
+                          to="/studio"
                           onClick={() => setIsUserMenuOpen(false)}
                           className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-700/60 transition"
                         >

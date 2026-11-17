@@ -1,10 +1,11 @@
 /**
  * VidTube Client Route Definitions
- * Phase 3 - Video Upload, Storage & Management Engine
+ * Phase 8 - Creator Studio, Channel Analytics & Content Management Dashboard
  */
 import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, useLocation } from 'react-router-dom';
 import MainLayout from '../layouts/MainLayout';
+import StudioLayout from '../layouts/StudioLayout';
 import HomePage from '../pages/HomePage';
 import LoginPage from '../pages/auth/LoginPage';
 import RegisterPage from '../pages/auth/RegisterPage';
@@ -24,9 +25,46 @@ import WatchLaterPage from '../pages/WatchLaterPage';
 import WatchHistoryPage from '../pages/WatchHistoryPage';
 import PlaceholderPage from '../pages/PlaceholderPage';
 import NotFoundPage from '../pages/NotFoundPage';
+
+// Studio Dedicated Pages
+import StudioDashboardPage from '../pages/studio/StudioDashboardPage';
+import StudioContentPage from '../pages/studio/StudioContentPage';
+import StudioContentAnalyticsPage from '../pages/studio/StudioContentAnalyticsPage';
+import StudioAnalyticsPage from '../pages/studio/StudioAnalyticsPage';
+import StudioCommentsPage from '../pages/studio/StudioCommentsPage';
+import StudioPlaylistsPage from '../pages/studio/StudioPlaylistsPage';
+import StudioCustomizationPage from '../pages/studio/StudioCustomizationPage';
+import StudioSettingsPage from '../pages/studio/StudioSettingsPage';
+
 import { ProtectedRoute, GuestRoute } from '../components/navigation/RouteGuards';
 
 export const AppRoutes = () => {
+  const location = useLocation();
+  const isStudioRoute = location.pathname.startsWith('/studio');
+
+  // Dedicated Creator Studio Application Shell
+  if (isStudioRoute) {
+    return (
+      <ProtectedRoute>
+        <StudioLayout>
+          <Routes>
+            <Route path="/studio" element={<StudioDashboardPage />} />
+            <Route path="/studio/content" element={<StudioContentPage />} />
+            <Route path="/studio/content/:contentId/analytics" element={<StudioContentAnalyticsPage />} />
+            <Route path="/studio/analytics" element={<StudioAnalyticsPage />} />
+            <Route path="/studio/comments" element={<StudioCommentsPage />} />
+            <Route path="/studio/playlists" element={<StudioPlaylistsPage />} />
+            <Route path="/studio/customization" element={<StudioCustomizationPage />} />
+            <Route path="/studio/settings" element={<StudioSettingsPage />} />
+            <Route path="/studio/videos" element={<StudioContentPage />} />
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+        </StudioLayout>
+      </ProtectedRoute>
+    );
+  }
+
+  // Standard VidTube Platform Shell
   return (
     <MainLayout>
       <Routes>
@@ -88,20 +126,12 @@ export const AppRoutes = () => {
           }
         />
 
-        {/* Phase 3: Video Upload & Creator Management */}
+        {/* Video Upload Route */}
         <Route
           path="/upload"
           element={
             <ProtectedRoute>
               <VideoUploadPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/studio/videos"
-          element={
-            <ProtectedRoute>
-              <MyVideosPage />
             </ProtectedRoute>
           }
         />

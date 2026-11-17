@@ -13,6 +13,7 @@ const { ApiResponse } = require('../utils/apiResponse');
 const { LIKE_TYPES, NOTIFICATION_TYPES } = require('../constants/appConstants');
 const { createNotification } = require('../services/notification.service');
 const { emitToContent } = require('../services/socket.service');
+const { recordEvent } = require('../services/analytics.service');
 const { logger } = require('../utils/logger');
 
 /**
@@ -125,6 +126,17 @@ const setReaction = async (req, res, next) => {
         doc.likesCount = updated.likesCount;
         doc.dislikesCount = updated.dislikesCount;
 
+        if (doc.channel && (contentType === 'Video' || contentType === 'Short')) {
+          recordEvent({
+            channelId: doc.channel,
+            contentType,
+            contentId,
+            eventType: reaction,
+            value: 1,
+            viewer: userId
+          });
+        }
+
         // Send like notification if switched to like
         if (reaction === LIKE_TYPES.LIKE) {
           const ownerId = doc.owner || doc.user;
@@ -168,6 +180,17 @@ const setReaction = async (req, res, next) => {
       action = 'added';
       doc.likesCount = updated.likesCount;
       doc.dislikesCount = updated.dislikesCount;
+
+      if (doc.channel && (contentType === 'Video' || contentType === 'Short')) {
+        recordEvent({
+          channelId: doc.channel,
+          contentType,
+          contentId,
+          eventType: reaction,
+          value: 1,
+          viewer: userId
+        });
+      }
 
       // Send like notification to creator
       if (reaction === LIKE_TYPES.LIKE) {

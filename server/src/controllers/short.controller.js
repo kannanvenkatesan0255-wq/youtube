@@ -10,6 +10,7 @@ const {
   generateUploadSignature,
   deleteCloudinaryAsset
 } = require('../services/cloudinary.service');
+const { recordEvent } = require('../services/analytics.service');
 const { logger } = require('../utils/logger');
 const {
   VIDEO_VISIBILITY,
@@ -381,6 +382,24 @@ const trackShortView = async (req, res, next) => {
 
     if (short.channel) {
       await Channel.findByIdAndUpdate(short.channel, { $inc: { totalViews: 1 } });
+      recordEvent({
+        channelId: short.channel,
+        contentType: 'Short',
+        contentId: short._id,
+        eventType: 'view',
+        value: 1,
+        viewer: req.user ? req.user._id : null
+      });
+      if (watchTime) {
+        recordEvent({
+          channelId: short.channel,
+          contentType: 'Short',
+          contentId: short._id,
+          eventType: 'watch_time',
+          value: watchTime,
+          viewer: req.user ? req.user._id : null
+        });
+      }
     }
 
     shortViewCache.set(cacheKey, now);

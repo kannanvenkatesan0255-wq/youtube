@@ -58,6 +58,16 @@ const channelSchema = new mongoose.Schema(
       type: Boolean,
       default: false
     },
+    featuredVideo: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Video',
+      default: null
+    },
+    defaultVisibility: {
+      type: String,
+      enum: ['public', 'unlisted', 'private'],
+      default: 'public'
+    },
     links: [
       {
         title: { type: String, trim: true },

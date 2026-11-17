@@ -14,6 +14,7 @@ const { ApiResponse } = require('../utils/apiResponse');
 const { NOTIFICATION_TYPES, LIKE_TYPES } = require('../constants/appConstants');
 const { createNotification } = require('../services/notification.service');
 const { emitToContent } = require('../services/socket.service');
+const { recordEvent } = require('../services/analytics.service');
 const { logger } = require('../utils/logger');
 
 /**
@@ -146,6 +147,17 @@ const createComment = async (req, res, next) => {
 
     // Increment commentsCount on target content atomically
     await Model.findByIdAndUpdate(contentId, { $inc: { commentsCount: 1 } });
+
+    if (doc.channel) {
+      recordEvent({
+        channelId: doc.channel,
+        contentType,
+        contentId,
+        eventType: 'comment',
+        value: 1,
+        viewer: userId
+      });
+    }
 
     const populated = await Comment.findById(comment._id)
       .populate('user', 'name username avatar')

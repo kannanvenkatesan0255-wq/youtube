@@ -12,6 +12,7 @@ const { ApiError } = require('../utils/apiError');
 const { ApiResponse } = require('../utils/apiResponse');
 const { NOTIFICATION_TYPES } = require('../constants/appConstants');
 const { createNotification } = require('../services/notification.service');
+const { recordEvent } = require('../services/analytics.service');
 const { logger } = require('../utils/logger');
 
 /**
@@ -53,6 +54,15 @@ const subscribeToChannel = async (req, res, next) => {
     await Subscription.create({
       subscriber: subscriberId,
       channel: channelId
+    });
+
+    recordEvent({
+      channelId,
+      contentType: 'Channel',
+      contentId: channelId,
+      eventType: 'subscribe',
+      value: 1,
+      viewer: subscriberId
     });
 
     // Atomically increment channel subscriber count
@@ -110,6 +120,15 @@ const unsubscribeFromChannel = async (req, res, next) => {
     let currentCount = channel.subscribersCount;
 
     if (existing) {
+      recordEvent({
+        channelId,
+        contentType: 'Channel',
+        contentId: channelId,
+        eventType: 'unsubscribe',
+        value: 1,
+        viewer: subscriberId
+      });
+
       const updatedChannel = await Channel.findByIdAndUpdate(
         channelId,
         { $inc: { subscribersCount: -1 } },

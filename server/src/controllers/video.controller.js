@@ -13,6 +13,7 @@ const {
   generateHlsUrl,
   isCloudinaryConfigured
 } = require('../services/cloudinary.service');
+const { recordEvent } = require('../services/analytics.service');
 const { logger } = require('../utils/logger');
 const {
   VIDEO_VISIBILITY,
@@ -712,6 +713,24 @@ const trackVideoView = async (req, res, next) => {
 
     if (video.channel) {
       await Channel.findByIdAndUpdate(video.channel, { $inc: { totalViews: 1 } });
+      recordEvent({
+        channelId: video.channel,
+        contentType: 'Video',
+        contentId: video._id,
+        eventType: 'view',
+        value: 1,
+        viewer: req.user ? req.user._id : null
+      });
+      if (watchTime) {
+        recordEvent({
+          channelId: video.channel,
+          contentType: 'Video',
+          contentId: video._id,
+          eventType: 'watch_time',
+          value: watchTime,
+          viewer: req.user ? req.user._id : null
+        });
+      }
     }
 
     viewCache.set(cacheKey, now);
@@ -769,6 +788,29 @@ const savePlaybackProgress = async (req, res, next) => {
       },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
+
+    if (video.channel) {
+      if (watchedSeconds > 0) {
+        recordEvent({
+          channelId: video.channel,
+          contentType: 'Video',
+          contentId: video._id,
+          eventType: 'watch_time',
+          value: watchedSeconds,
+          viewer: req.user._id
+        });
+      }
+      if (completed) {
+        recordEvent({
+          channelId: video.channel,
+          contentType: 'Video',
+          contentId: video._id,
+          eventType: 'completion',
+          value: 1,
+          viewer: req.user._id
+        });
+      }
+    }
 
     return res.status(200).json(
       ApiResponse.success(

@@ -5,6 +5,7 @@
 const WatchHistory = require('../models/WatchHistory');
 const Video = require('../models/Video');
 const Short = require('../models/Short');
+const { recordEvent } = require('./analytics.service');
 const { ApiError } = require('../utils/apiError');
 const { VIDEO_VISIBILITY } = require('../constants/appConstants');
 
@@ -49,6 +50,43 @@ const trackProgress = async ({
     { $set: updateData },
     { upsert: true, new: true, setDefaultsOnInsert: true }
   );
+
+  // Asynchronously record watch_time and completion analytics
+  (async () => {
+    try {
+      let targetChannel = null;
+      if (contentType === 'Short') {
+        const s = await Short.findById(targetId).select('channel');
+        if (s) targetChannel = s.channel;
+      } else {
+        const v = await Video.findById(targetId).select('channel');
+        if (v) targetChannel = v.channel;
+      }
+
+      if (targetChannel) {
+        if (watchedSeconds > 0) {
+          recordEvent({
+            channelId: targetChannel,
+            contentType,
+            contentId: targetId,
+            eventType: 'watch_time',
+            value: watchedSeconds,
+            viewer: userId
+          });
+        }
+        if (isCompleted) {
+          recordEvent({
+            channelId: targetChannel,
+            contentType,
+            contentId: targetId,
+            eventType: 'completion',
+            value: 1,
+            viewer: userId
+          });
+        }
+      }
+    } catch (_) {}
+  })();
 
   return record;
 };

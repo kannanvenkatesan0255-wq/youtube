@@ -18,6 +18,7 @@ const playlistRoutes = require('./playlist.routes');
 const watchLaterRoutes = require('./watchLater.routes');
 const historyRoutes = require('./history.routes');
 const recommendationRoutes = require('./recommendation.routes');
+const studioRoutes = require('./studio.routes');
 
 const router = Router();
 
@@ -49,6 +50,10 @@ router.use('/watch-later', watchLaterRoutes);
 router.use('/history', historyRoutes);
 router.use('/recommendations', recommendationRoutes);
 
+// Mount active Phase 8 Creator Studio & Channel Analytics
+router.use('/studio', studioRoutes);
+router.use('/analytics', studioRoutes);
+
 /**
  * Architectural Module Placeholders for Subsequent Phases
  */
@@ -69,7 +74,6 @@ const createPhasePlaceholder = (moduleName, targetPhase) => {
 };
 
 // Register architectural route boundaries for upcoming phases
-router.use('/analytics', createPhasePlaceholder('Analytics', 8));
 router.use('/admin', createPhasePlaceholder('Administration', 9));
 
 module.exports = router;
