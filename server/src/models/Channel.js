@@ -72,6 +72,24 @@ const channelSchema = new mongoose.Schema(
   }
 );
 
+// Search and performance indexes
+channelSchema.index(
+  {
+    name: 'text',
+    handle: 'text',
+    description: 'text'
+  },
+  {
+    weights: {
+      name: 10,
+      handle: 8,
+      description: 1
+    },
+    name: 'channel_fulltext_search'
+  }
+);
+channelSchema.index({ subscribersCount: -1 });
+
 const Channel = mongoose.models.Channel || mongoose.model('Channel', channelSchema);
 module.exports = Channel;
 

@@ -12,10 +12,23 @@ const watchHistorySchema = new mongoose.Schema(
       required: true,
       index: true
     },
+    contentType: {
+      type: String,
+      enum: ['Video', 'Short'],
+      default: 'Video',
+      index: true
+    },
     video: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Video',
-      required: true,
+      required: function () {
+        return !this.short;
+      },
+      index: true
+    },
+    short: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Short',
       index: true
     },
     watchedSeconds: {
@@ -41,9 +54,11 @@ const watchHistorySchema = new mongoose.Schema(
   }
 );
 
-// Unique pair user + video with upsert semantics
-watchHistorySchema.index({ user: 1, video: 1 }, { unique: true });
+// Unique pair user + content with upsert semantics
+watchHistorySchema.index({ user: 1, video: 1 }, { unique: true, sparse: true });
+watchHistorySchema.index({ user: 1, short: 1 }, { unique: true, sparse: true });
 watchHistorySchema.index({ user: 1, lastWatchedAt: -1 });
+watchHistorySchema.index({ user: 1, completed: 1, lastWatchedAt: -1 });
 
 const WatchHistory = mongoose.models.WatchHistory || mongoose.model('WatchHistory', watchHistorySchema);
 module.exports = WatchHistory;

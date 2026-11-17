@@ -61,7 +61,7 @@ export const Sidebar = () => {
           <SidebarItem icon={<History className="w-5 h-5" />} label="History" to="/history" />
           <SidebarItem icon={<ListVideo className="w-5 h-5" />} label="Playlists" to="/playlists" />
           <SidebarItem icon={<SquarePlay className="w-5 h-5" />} label="Your videos" to="/studio/videos" />
-          <SidebarItem icon={<Clock className="w-5 h-5" />} label="Watch Later" to="/playlist?list=WL" />
+          <SidebarItem icon={<Clock className="w-5 h-5" />} label="Watch Later" to="/playlist/watch-later" />
           <SidebarItem icon={<ThumbsUp className="w-5 h-5" />} label="Liked videos" to="/playlist?list=LL" />
         </div>
       </div>

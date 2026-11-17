@@ -147,5 +147,22 @@ shortSchema.index({ owner: 1, createdAt: -1 });
 shortSchema.index({ channel: 1, createdAt: -1 });
 shortSchema.index({ views: -1 });
 
+// Full-text search index
+shortSchema.index(
+  {
+    title: 'text',
+    description: 'text',
+    tags: 'text'
+  },
+  {
+    weights: {
+      title: 10,
+      tags: 5,
+      description: 1
+    },
+    name: 'short_fulltext_search'
+  }
+);
+
 const Short = mongoose.models.Short || mongoose.model('Short', shortSchema);
 module.exports = Short;

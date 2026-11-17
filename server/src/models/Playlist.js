@@ -41,6 +41,21 @@ const playlistSchema = new mongoose.Schema(
         }
       }
     ],
+    thumbnailUrl: {
+      type: String,
+      default: ''
+    },
+    isSystem: {
+      type: Boolean,
+      default: false,
+      index: true
+    },
+    systemType: {
+      type: String,
+      enum: ['custom', 'watch_later', 'liked_videos'],
+      default: 'custom',
+      index: true
+    },
     visibility: {
       type: String,
       enum: Object.values(VIDEO_VISIBILITY),
@@ -54,7 +69,14 @@ const playlistSchema = new mongoose.Schema(
   }
 );
 
+// Virtual for video count
+playlistSchema.virtual('videoCount').get(function () {
+  return this.videos ? this.videos.length : 0;
+});
+
 playlistSchema.index({ owner: 1, createdAt: -1 });
+playlistSchema.index({ owner: 1, systemType: 1 });
+playlistSchema.index({ visibility: 1, createdAt: -1 });
 
 const Playlist = mongoose.models.Playlist || mongoose.model('Playlist', playlistSchema);
 module.exports = Playlist;

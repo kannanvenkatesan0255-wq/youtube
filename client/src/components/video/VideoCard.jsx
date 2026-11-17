@@ -2,14 +2,20 @@
  * VidTube Video Card Component
  * Exact reproduction of YouTube video card layout, metadata, badges, and hover actions
  */
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { MoreVertical } from 'lucide-react';
+import { MoreVertical, Clock, Check } from 'lucide-react';
 import Avatar from '../common/Avatar';
 import { DurationBadge, VerifiedBadge } from '../common/Badge';
 import { formatViews, formatTimeAgo, formatDuration } from '../../utils/formatters';
+import watchLaterService from '../../services/watchLaterService';
+import { useAuth } from '../../context/AuthContext';
 
 export const VideoCard = ({ video }) => {
+  const { isAuthenticated } = useAuth();
+  const [isSavedToWL, setIsSavedToWL] = useState(false);
+  const [wlLoading, setWlLoading] = useState(false);
+
   if (!video) return null;
 
   const videoId = video._id || video.id;
@@ -27,22 +33,57 @@ export const VideoCard = ({ video }) => {
     ? formatTimeAgo(video.createdAt)
     : 'Recently';
 
+  const handleToggleWatchLater = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isAuthenticated) return;
+    setWlLoading(true);
+    try {
+      if (isSavedToWL) {
+        await watchLaterService.removeFromWatchLater(videoId);
+        setIsSavedToWL(false);
+      } else {
+        await watchLaterService.addToWatchLater(videoId);
+        setIsSavedToWL(true);
+      }
+    } catch (err) {
+      console.error('Failed to toggle Watch Later', err);
+    } finally {
+      setWlLoading(false);
+    }
+  };
+
   return (
-    <article className="group flex flex-col select-none">
+    <article className="group flex flex-col select-none relative">
       {/* Thumbnail Container (16:9 ratio) */}
-      <Link
-        to={watchUrl}
-        className="relative aspect-video w-full rounded-xl overflow-hidden bg-neutral-200 dark:bg-neutral-800 transition-all duration-200 group-hover:rounded-none group-hover:shadow-md block"
-      >
-        <img
-          src={video.thumbnailUrl}
-          alt={video.title}
-          loading="lazy"
-          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-        />
+      <div className="relative aspect-video w-full rounded-xl overflow-hidden bg-neutral-200 dark:bg-neutral-800 transition-all duration-200 group-hover:rounded-none group-hover:shadow-md block">
+        <Link to={watchUrl} className="block w-full h-full">
+          <img
+            src={video.thumbnailUrl}
+            alt={video.title}
+            loading="lazy"
+            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+          />
+        </Link>
+
+        {/* Quick Action: Watch Later Icon Button */}
+        {isAuthenticated && (
+          <button
+            type="button"
+            title={isSavedToWL ? 'Remove from Watch Later' : 'Watch Later'}
+            onClick={handleToggleWatchLater}
+            disabled={wlLoading}
+            className={`absolute top-2 right-2 p-1.5 rounded bg-black/80 hover:bg-black text-white opacity-0 group-hover:opacity-100 transition-opacity z-10 shadow ${
+              isSavedToWL ? '!opacity-100 bg-blue-600' : ''
+            }`}
+          >
+            {isSavedToWL ? <Check className="w-4 h-4 text-white" /> : <Clock className="w-4 h-4" />}
+          </button>
+        )}
+
         {/* Video Duration Badge */}
         <DurationBadge durationText={durationFormatted} />
-      </Link>
+      </div>
 
       {/* Video Details & Channel Info */}
       <div className="flex gap-3 items-start mt-3 px-0.5">

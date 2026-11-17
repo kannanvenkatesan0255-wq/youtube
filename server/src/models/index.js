@@ -12,6 +12,7 @@ const Subscription = require('./Subscription');
 const Playlist = require('./Playlist');
 const Notification = require('./Notification');
 const WatchHistory = require('./WatchHistory');
+const SearchHistory = require('./SearchHistory');
 
 module.exports = {
   User,
@@ -23,6 +24,7 @@ module.exports = {
   Subscription,
   Playlist,
   Notification,
-  WatchHistory
+  WatchHistory,
+  SearchHistory
 };
 

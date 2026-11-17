@@ -282,6 +282,69 @@ VidTube implements YouTube's flat threaded comment hierarchy:
               - Header NotificationDropdown receives event, increments badge, and prepends to list
 ```
 
+---
+
+## 9. Search, Playlists, Watch History & Recommendation Engine Architecture (Phase 7)
+
+### Multi-Type Full-Text & Prefix Search Engine
+
+VidTube integrates a hybrid full-text and regex search engine supporting videos, shorts, and channels:
+
+```
+[User Search Query `q`]
+        │
+        ├── 1. Suggestion Pre-fetch & Autocomplete (`GET /api/search/suggestions`):
+        │      - Queries user's personal `SearchHistory` (prefix match, clock icon)
+        │      - Queries `Channel` name & `@handle` (avatar, handle badge)
+        │      - Queries ready `Video` & `Short` titles (deduplicated top 10)
+        │
+        ├── 2. Multi-Type Execution (`GET /api/search`):
+        │      - Videos: Title, description, tags with duration & uploadDate filters
+        │      - Shorts: Dedicated vertical shelf injection (`shorts_shelf`)
+        │      - Channels: Dedicated channel header cards with instant Subscribe button
+        │
+        └── 3. User Search History Persistence (`SearchHistory` collection):
+               - Authenticated queries automatically upserted (`lastSearchedAt: Date.now()`)
+               - Self-isolation: Users can delete single entries or clear history entirely
+```
+
+### Playlist & Watch Later System
+
+- **Unified Schema Design**: The `Playlist` model handles both custom user playlists and system playlists (`isSystem: Boolean`, `systemType: 'custom' | 'watch_later' | 'liked_videos'`).
+- **Protection Rules**: System playlists cannot be deleted (`DELETE /api/playlists/:id` rejects with `HTTP 400`).
+- **Video Deduplication**: Adding an existing video to a playlist is safely deduplicated without creating duplicate array items.
+- **Ordered Playback Queue**: Playlists store ordered references `{ video, addedAt }` with reordering support (`PATCH /api/playlists/:id/reorder`).
+- **Queue Player Integration**: The Watch Page supports `?list=:playlistId&index=:idx` with previous/next video navigation and auto-advancing upon playback completion.
+
+### Watch History & Continue Watching Engine
+
+```
+[Video / Short Playback]
+        │
+        ├── Cumulative Progress Tracking (`POST /api/history/track`):
+        │      - `watchedSeconds`, `duration`, `completed`
+        │      - Auto-completion threshold: `watchedSeconds / duration >= 0.9` -> `completed: true`
+        │
+        ├── Continue Watching Row (`GET /api/history/continue-watching`):
+        │      - Partially watched long-form videos (`completed: false`, `watchedSeconds > 5s`)
+        │      - Displayed as a horizontal carousel on the homepage with red progress bars
+        │      - Clicking resumes directly from the saved second (`/watch/:id?t=...`)
+        │
+        └── History Dashboard (`GET /api/history`):
+               - Search within personal history (`?q=...`)
+               - Individual item removal and bulk history purge
+```
+
+### Weighted Recommendation Algorithm
+
+Recommendations are generated dynamically via multi-signal ranking:
+
+$$\text{Score} = \text{Base} + 40 \times \mathbb{I}_{\text{Subscribed}} + 25 \times \mathbb{I}_{\text{PreferredCategory}} + 10 \times (\text{TagMatches}) + \text{RecencyBonus} + \min(\text{Views}, 50) - 30 \times \mathbb{I}_{\text{Completed}}$$
+
+- **Cold Start / Guest Users**: Falls back to global trending videos ranked by view velocity in the last 72 hours.
+- **Context-Aware Related Videos**: Watch Page sidebar queries `GET /api/recommendations/related/:videoId`, matching category and tags while strictly excluding the currently active video and all private/unlisted content.
+
+
 
 
 

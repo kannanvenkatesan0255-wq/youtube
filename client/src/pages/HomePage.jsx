@@ -7,18 +7,43 @@ import React, { useState, useEffect, useMemo } from 'react';
 import CategoryChips from '../components/video/CategoryChips';
 import VideoGrid from '../components/video/VideoGrid';
 import ShortsShelf from '../components/shorts/ShortsShelf';
+import ContinueWatchingRow from '../components/home/ContinueWatchingRow';
 import { SAMPLE_VIDEOS } from '../utils/sampleData';
 import { Sparkles, UploadCloud, Loader2 } from 'lucide-react';
-import { videoService } from '../services/videoService';
+import recommendationService from '../services/recommendationService';
+import historyService from '../services/historyService';
+import { useAuth } from '../hooks/useAuth';
 import { Link } from 'react-router-dom';
 
 export const HomePage = () => {
+  const { isAuthenticated } = useAuth();
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [showWelcomeBanner, setShowWelcomeBanner] = useState(true);
   const [realVideos, setRealVideos] = useState([]);
+  const [continueWatchingItems, setContinueWatchingItems] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // Fetch real public videos from backend
+  // Fetch Continue Watching if authenticated
+  useEffect(() => {
+    let isMounted = true;
+    if (isAuthenticated) {
+      historyService
+        .getContinueWatching()
+        .then((res) => {
+          if (isMounted && res?.data) {
+            setContinueWatchingItems(res.data);
+          }
+        })
+        .catch(() => {});
+    } else {
+      setContinueWatchingItems([]);
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [isAuthenticated]);
+
+  // Fetch recommended videos from backend
   useEffect(() => {
     let isMounted = true;
     const fetchVideos = async () => {
@@ -28,7 +53,7 @@ export const HomePage = () => {
           limit: 24,
           ...(selectedCategory !== 'All' ? { category: selectedCategory } : {})
         };
-        const res = await videoService.getPublicVideos(params);
+        const res = await recommendationService.getRecommendations(params);
         if (isMounted && res.data && Array.isArray(res.data.videos)) {
           setRealVideos(res.data.videos);
         }
@@ -44,7 +69,7 @@ export const HomePage = () => {
     return () => {
       isMounted = false;
     };
-  }, [selectedCategory]);
+  }, [selectedCategory, isAuthenticated]);
 
   // Filter sample videos by category if not 'All'
   const filteredSampleVideos = useMemo(() => {
@@ -72,7 +97,7 @@ export const HomePage = () => {
 
       {/* Main Container */}
       <div className="px-4 sm:px-6 pt-4">
-        {/* Phase 3 Architectural Showcase Banner */}
+        {/* Phase 7 Architectural Showcase Banner */}
         {showWelcomeBanner && (
           <div className="mb-6 p-4 rounded-2xl bg-neutral-100 dark:bg-neutral-800/80 border border-neutral-200 dark:border-neutral-700/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 transition">
             <div className="flex items-center gap-3">
@@ -82,14 +107,14 @@ export const HomePage = () => {
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-bold uppercase tracking-wider text-[#FF0033] bg-[#FF0033]/10 px-2 py-0.5 rounded-full">
-                    Phase 3 Active
+                    Phase 7 Active
                   </span>
                   <h2 className="text-sm font-semibold text-[#0f0f0f] dark:text-[#f1f1f1]">
-                    VidTube Video Upload & Storage Engine Deployed
+                    VidTube Search, Playlists, History & Recommendations Engine Deployed
                   </h2>
                 </div>
                 <p className="text-xs text-[#606060] dark:text-[#aaaaaa] mt-0.5">
-                  Direct Cloudinary signed uploads, video metadata persistence, thumbnail management, and creator studio enabled.
+                  Full-text multi-type search, personalized recommendations, watch history resume, and playlist management active.
                 </p>
               </div>
             </div>
@@ -109,6 +134,16 @@ export const HomePage = () => {
               </button>
             </div>
           </div>
+        )}
+
+        {/* Continue Watching Section for Authenticated Users */}
+        {continueWatchingItems.length > 0 && (
+          <ContinueWatchingRow
+            items={continueWatchingItems}
+            onItemRemoved={(id) =>
+              setContinueWatchingItems((prev) => prev.filter((item) => item._id !== id))
+            }
+          />
         )}
 
         {/* Dedicated Shorts Shelf */}

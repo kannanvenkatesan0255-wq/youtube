@@ -3,7 +3,7 @@
 <div align="center">
   <img src="client/public/vidtube-logo.svg" alt="VidTube Logo" width="120" />
   <h3>A Production-Oriented YouTube Replica Built with Modern Full-Stack Technologies</h3>
-  <p>Phase 6 Active: Engagement, Comments, Subscriptions & Notification Engine</p>
+  <p>Phase 7 Active: Search, Playlists, Watch History & Recommendation Engine</p>
 
   [![React](https://img.shields.io/badge/React-19.0-61DAFB?logo=react&logoColor=black)](https://react.dev/)
   [![Vite](https://img.shields.io/badge/Vite-6.1-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
@@ -29,8 +29,10 @@
 - **Phase 3: Video Upload, Storage & Management Engine** — ✅ COMPLETED (`ed4929a`)
 - **Phase 4: Video Player, Watch Page & Adaptive Streaming Engine** — ✅ COMPLETED (`5811142`)
 - **Phase 5: Shorts Upload, Vertical Video Feed & Interaction Engine** — ✅ COMPLETED (`4fbf67c`)
-- **Phase 6: Engagement, Comments, Subscriptions & Notification Engine** — ✅ COMPLETED
-- **Phases 7–10** — Scheduled per [PROJECT_ROADMAP.md](docs/PROJECT_ROADMAP.md)
+- **Phase 6: Engagement, Comments, Subscriptions & Notification Engine** — ✅ COMPLETED (`00bdb86`)
+- **Phase 7: Search, Playlists, Watch History & Recommendation Engine** — ✅ COMPLETED
+- **Phase 8: Creator Analytics & Channel Customization** — ⏳ NEXT
+- **Phases 9–10** — Scheduled per [PROJECT_ROADMAP.md](docs/PROJECT_ROADMAP.md)
 
 ---
 
@@ -394,6 +396,53 @@ npm run test:auth --workspace=server
 22. ✅ Related videos recommendation endpoint strictly excludes the currently watched video
 23. ✅ Related videos strictly excludes private videos and incomplete/uploading videos
 24. ✅ Related videos recommendations successfully return matching category public video
+
+### Verified Phase 7 Test Cases (45/45 Passing):
+1. ✅ Search query returns matching public video
+2. ✅ Search query returns matching short in unified items or shorts shelf
+3. ✅ Search by channel handle with `type=channel` returns creator channel
+4. ✅ Private video is strictly excluded from public search results
+5. ✅ Search duration filter "under4m" returns only videos under 4 minutes
+6. ✅ Search duration filter "over20m" returns only videos over 20 minutes
+7. ✅ Search upload date filter "today" includes recently created videos
+8. ✅ Search suggestions returns matching query terms
+9. ✅ Authenticated search query is recorded in user search history
+10. ✅ Search history is isolated: User C sees 0 queries recorded by User B
+11. ✅ User can delete individual search history entry
+12. ✅ User can clear all search history
+13. ✅ User B creates a custom playlist with initial video (201 Created)
+14. ✅ Add second video to playlist succeeds and increments count
+15. ✅ Adding duplicate video to playlist is safely deduplicated
+16. ✅ Get user playlists returns owner playlists including custom and system
+17. ✅ Reorder playlist by array of videoIds updates sequence correctly
+18. ✅ Remove video from playlist successfully deletes the item
+19. ✅ Get playlist by ID returns populated video details and owner information
+20. ✅ Owner can update playlist title and description
+21. ✅ Non-owner update attempt rejected with 403 Forbidden
+22. ✅ Private playlist cannot be viewed by other users (403 Forbidden)
+23. ✅ Owner can view their own private playlist
+24. ✅ Owner can delete their custom playlist (200 OK)
+25. ✅ Add video to Watch Later returns `isInWatchLater: true`
+26. ✅ Check Watch Later status returns `isInWatchLater: true`
+27. ✅ Check Watch Later status for unsaved video returns `isInWatchLater: false`
+28. ✅ Get Watch Later playlist returns system playlist populated with videos
+29. ✅ System playlist cannot be deleted via playlist DELETE route (400 Bad Request)
+30. ✅ Remove video from Watch Later returns `isInWatchLater: false`
+31. ✅ Check Watch Later after removal returns `isInWatchLater: false`
+32. ✅ Track partial progress on video (watchedSeconds: 120, completed: false)
+33. ✅ Track progress on Short records correctly with `contentType="Short"`
+34. ✅ Continue watching list includes partially watched video (progress < 90%)
+35. ✅ Completing video (>= 90% watched) automatically removes it from continue watching
+36. ✅ User history feed contains both long-form videos and shorts with metadata
+37. ✅ Query filter inside user watch history filters results accurately
+38. ✅ Delete single watch history entry succeeds (200 OK)
+39. ✅ Clear all watch history removes all entries for user
+40. ✅ Public recommendations endpoint returns popular public videos
+41. ✅ Recommendations filtered by category returns matching category videos
+42. ✅ Trending endpoint returns high-view/recent videos
+43. ✅ Related videos returns similar videos and strictly excludes current videoId
+44. ✅ Personalized recommendations prioritizes content from subscribed channels
+45. ✅ Private video is strictly excluded from general and trending recommendations
 
 ---
 

@@ -29,6 +29,8 @@ import Logo from '../common/Logo';
 import Avatar from '../common/Avatar';
 import { NotificationBadge } from '../common/Badge';
 import NotificationDropdown from '../notifications/NotificationDropdown';
+import SearchSuggestionsDropdown from '../search/SearchSuggestionsDropdown';
+import searchService from '../../services/searchService';
 
 export const Header = () => {
   const { toggleSidebar } = useSidebar();
@@ -41,24 +43,94 @@ export const Header = () => {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isMobileSearchActive, setIsMobileSearchActive] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [suggestions, setSuggestions] = useState([]);
+  const [isSuggestionsOpen, setIsSuggestionsOpen] = useState(false);
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
 
   const userMenuRef = useRef(null);
+  const searchContainerRef = useRef(null);
 
-  // Close user dropdown menu when clicking outside
+  // Close user dropdown menu and search suggestions when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
         setIsUserMenuOpen(false);
+      }
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target)) {
+        setIsSuggestionsOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Fetch suggestions debounced
+  useEffect(() => {
+    if (!isSearchFocused && !isMobileSearchActive) {
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await searchService.getSuggestions(searchQuery);
+        if (res?.data?.suggestions) {
+          setSuggestions(res.data.suggestions);
+          setIsSuggestionsOpen(res.data.suggestions.length > 0);
+        }
+      } catch (err) {
+        // Non-blocking
+      }
+    }, 200);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, isSearchFocused, isMobileSearchActive]);
+
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      console.log('Search query submitted:', searchQuery);
+      setIsSuggestionsOpen(false);
+      setIsMobileSearchActive(false);
+      navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  };
+
+  const handleSelectSuggestion = (selectedText) => {
+    setSearchQuery(selectedText);
+    setIsSuggestionsOpen(false);
+    setIsMobileSearchActive(false);
+    navigate(`/search?q=${encodeURIComponent(selectedText)}`);
+  };
+
+  const handleDeleteHistoryItem = async (historyId) => {
+    try {
+      await searchService.deleteSearchHistoryItem(historyId);
+      setSuggestions((prev) => prev.filter((s) => s.id !== historyId));
+    } catch (err) {
+      console.error('Failed to delete search history item', err);
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (!isSuggestionsOpen || suggestions.length === 0) return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiveSuggestionIndex((prev) =>
+        prev < suggestions.length - 1 ? prev + 1 : 0
+      );
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveSuggestionIndex((prev) =>
+        prev > 0 ? prev - 1 : suggestions.length - 1
+      );
+    } else if (e.key === 'Enter' && activeSuggestionIndex >= 0) {
+      e.preventDefault();
+      const item = suggestions[activeSuggestionIndex];
+      if (item) {
+        handleSelectSuggestion(item.text);
+      }
+    } else if (e.key === 'Escape') {
+      setIsSuggestionsOpen(false);
     }
   };
 
@@ -76,9 +148,12 @@ export const Header = () => {
     <header className="fixed top-0 left-0 right-0 z-50 h-14 bg-white dark:bg-[#0f0f0f] border-b border-neutral-200 dark:border-neutral-800 transition-colors select-none">
       {/* Mobile Search Overlay */}
       {isMobileSearchActive ? (
-        <div className="flex items-center h-full px-3 gap-2 bg-white dark:bg-[#0f0f0f]">
+        <div ref={searchContainerRef} className="relative flex items-center h-full px-3 gap-2 bg-white dark:bg-[#0f0f0f]">
           <button
-            onClick={() => setIsMobileSearchActive(false)}
+            onClick={() => {
+              setIsMobileSearchActive(false);
+              setIsSuggestionsOpen(false);
+            }}
             aria-label="Back"
             className="p-2 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 text-[#0f0f0f] dark:text-[#f1f1f1]"
           >
@@ -90,6 +165,8 @@ export const Header = () => {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => setIsSuggestionsOpen(suggestions.length > 0)}
+                onKeyDown={handleKeyDown}
                 placeholder="Search VidTube"
                 autoFocus
                 className="w-full bg-transparent text-sm text-[#0f0f0f] dark:text-[#f1f1f1] focus:outline-none"
@@ -117,6 +194,15 @@ export const Header = () => {
           >
             <Mic className="w-5 h-5" />
           </button>
+
+          {/* Mobile suggestions dropdown */}
+          <SearchSuggestionsDropdown
+            suggestions={suggestions}
+            isOpen={isSuggestionsOpen}
+            activeIndex={activeSuggestionIndex}
+            onSelectSuggestion={handleSelectSuggestion}
+            onDeleteHistoryItem={handleDeleteHistoryItem}
+          />
         </div>
       ) : (
         /* Normal YouTube Header */
@@ -134,8 +220,8 @@ export const Header = () => {
           </div>
 
           {/* Center section: Search Bar & Mic (Desktop/Tablet) */}
-          <div className="hidden md:flex items-center justify-center flex-1 max-w-[720px] px-4">
-            <form onSubmit={handleSearchSubmit} className="flex items-center w-full max-w-[600px]">
+          <div ref={searchContainerRef} className="hidden md:flex items-center justify-center flex-1 max-w-[720px] px-4 relative">
+            <form onSubmit={handleSearchSubmit} className="flex items-center w-full max-w-[600px] relative">
               <div
                 className={`flex items-center w-full h-10 border rounded-l-full bg-transparent transition-all pl-4 ${
                   isSearchFocused
@@ -150,8 +236,12 @@ export const Header = () => {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  onFocus={() => setIsSearchFocused(true)}
+                  onFocus={() => {
+                    setIsSearchFocused(true);
+                    setIsSuggestionsOpen(true);
+                  }}
                   onBlur={() => setIsSearchFocused(false)}
+                  onKeyDown={handleKeyDown}
                   placeholder="Search"
                   className="w-full bg-transparent text-sm text-[#0f0f0f] dark:text-[#f1f1f1] placeholder-neutral-500 focus:outline-none"
                 />
@@ -172,6 +262,15 @@ export const Header = () => {
               >
                 <Search className="w-5 h-5 stroke-[1.8]" />
               </button>
+
+              {/* Suggestions Dropdown */}
+              <SearchSuggestionsDropdown
+                suggestions={suggestions}
+                isOpen={isSuggestionsOpen}
+                activeIndex={activeSuggestionIndex}
+                onSelectSuggestion={handleSelectSuggestion}
+                onDeleteHistoryItem={handleDeleteHistoryItem}
+              />
             </form>
 
             {/* Voice Search Button */}

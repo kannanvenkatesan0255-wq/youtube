@@ -17,6 +17,11 @@ import WatchPage from '../pages/WatchPage';
 import ShortsPage from '../pages/ShortsPage';
 import SubscriptionsFeedPage from '../pages/SubscriptionsFeedPage';
 import NotificationsPage from '../pages/NotificationsPage';
+import SearchPage from '../pages/SearchPage';
+import PlaylistPage from '../pages/PlaylistPage';
+import PlaylistsPage from '../pages/PlaylistsPage';
+import WatchLaterPage from '../pages/WatchLaterPage';
+import WatchHistoryPage from '../pages/WatchHistoryPage';
 import PlaceholderPage from '../pages/PlaceholderPage';
 import NotFoundPage from '../pages/NotFoundPage';
 import { ProtectedRoute, GuestRoute } from '../components/navigation/RouteGuards';
@@ -118,8 +123,13 @@ export const AppRoutes = () => {
         <Route path="/feed/subscriptions" element={<SubscriptionsFeedPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
 
-        <Route path="/history" element={<PlaceholderPage title="Watch History" phase={9} />} />
-        <Route path="/playlists" element={<PlaceholderPage title="Your Playlists" phase={7} />} />
+        {/* Phase 7: Search, Playlists, Watch History & Watch Later */}
+        <Route path="/search" element={<SearchPage />} />
+        <Route path="/playlists" element={<PlaylistsPage />} />
+        <Route path="/playlist/watch-later" element={<WatchLaterPage />} />
+        <Route path="/playlist/:playlistId" element={<PlaylistPage />} />
+        <Route path="/history" element={<WatchHistoryPage />} />
+
         <Route path="/you" element={<PlaceholderPage title="Your Channel & Profile" phase={4} />} />
         <Route path="/explore/:category" element={<PlaceholderPage title="Explore Section" phase={8} />} />
 

@@ -11,12 +11,12 @@ VidTube is a production-oriented, full-stack video sharing and adaptive streamin
 | **Phase 1** | **Project Architecture & UI Shell** | Foundation, Monorepo, YouTube Exact Shell, MongoDB Setup, Health API | **COMPLETED** (`d342b80`) |
 | **Phase 2** | **Authentication & Security Engine** | JWT, bcrypt, Refresh Tokens, Cookie Sessions, Cloudinary Auth, Profile | **COMPLETED** (`05c768f`) |
 | **Phase 3** | **Video Upload, Storage & Management** | Direct Signed Cloudinary Uploads, Metadata, Privacy, Creator Studio | **COMPLETED** (`ed4929a`) |
-| **Phase 4** | **Video Player, Watch Page & Streaming** | Custom Video Player, Hls.js Adaptive Streaming, Watch Page, Views | **COMPLETED** |
-| **Phase 5** | **VidTube Shorts & Vertical Player** | 9:16 Vertical Video Engine, Infinite Scroll, Sound Overlay, Gestures | *Scheduled* |
-| **Phase 6** | **Engagement & Community System** | Nested Comment Threads, Like/Dislike, Mentions, Real-Time Badges | *Scheduled* |
-| **Phase 7** | **Subscriptions, Playlists & Library** | Channel Subscriptions, Bell Notifications, Custom Playlists, Watch Later | *Scheduled* |
-| **Phase 8** | **Search Engine, Filters & Explore Feed** | Full-Text Regex & Atlas Search, Category Exploration, Trending Algorithm | *Scheduled* |
-| **Phase 9** | **Watch History & Creator Analytics** | Resumable Watch Progress, Creator Analytics Studio, Viewership Metrics | *Scheduled* |
+| **Phase 4** | **Video Player, Watch Page & Streaming** | Custom Video Player, Hls.js Adaptive Streaming, Watch Page, Views | **COMPLETED** (`5811142`) |
+| **Phase 5** | **VidTube Shorts & Vertical Player** | 9:16 Vertical Video Engine, Infinite Scroll, Sound Overlay, Gestures | **COMPLETED** (`4fbf67c`) |
+| **Phase 6** | **Engagement & Community System** | Nested Comment Threads, Like/Dislike, Subscriptions, Real-Time Notifications | **COMPLETED** (`00bdb86`) |
+| **Phase 7** | **Search, Playlists, History & Recommendations** | Multi-Type Search, Custom Playlists, Watch Later, History Resume, Recommendation Engine | **COMPLETED** |
+| **Phase 8** | **Creator Analytics & Channel Customization** | Channel Analytics Dashboard, Viewer Demographics, Realtime Views, Studio Charts | *Next* |
+| **Phase 9** | **Admin Moderation & Platform Governance** | Content Moderation, Flagged Videos, User Roles & Ban Controls | *Scheduled* |
 | **Phase 10** | **Adaptive HLS Streaming & Production Deploy** | Adaptive Bitrate HLS, Redis Caching, CI/CD Pipeline, Final Polish | *Scheduled* |
 
 ---
@@ -137,9 +137,33 @@ VidTube is a production-oriented, full-stack video sharing and adaptive streamin
 - **Automated Test Suite:**
   - `server/src/tests/engagement.test.js` covers 37 verification points with 100% pass rate.
 
-### Phase 7: Playlists, Watch Later & Library System (Next)
-- Custom user playlists (Create, Update, Delete, Reorder).
-- System playlists: "Watch Later" and "Liked Videos".
-- Collaborative and private/unlisted playlists.
-- Add/remove videos and Shorts to playlists from Watch Page and Feed.
-- Sentiment counting and optimistic UI updates.
+### Phase 7: Search, Playlists, Watch History & Recommendations (Completed)
+- **Multi-Type Search Engine (`/api/search`):**
+  - Full-text & regex search across Videos, Shorts, and Channels with live autocomplete suggestions (`/api/search/suggestions`).
+  - Search filters: Type (All, Video, Short, Channel), Upload Date (Hour, Today, Week, Month, Year), Duration (Under 4m, 4-20m, Over 20m), Sort By (Relevance, Date, Views, Rating).
+  - Search History persistence per authenticated user (`SearchHistory` model) with individual entry deletion and full purge.
+- **Playlist System (`Playlist` model & `/api/playlists`):**
+  - Full CRUD for custom playlists (title, description, visibility, dynamic thumbnail).
+  - Add video, remove video, and reorder videos (`PATCH /api/playlists/:id/reorder`).
+  - Dedicated Playlist page (`/playlist/:playlistId`) with "Play All" playback support.
+  - Interactive "Save to playlist" modal (`SaveToPlaylistModal.jsx`) on watch page and video cards.
+- **Watch Later Engine (`/api/watch-later`):**
+  - Dedicated system playlist for each user (`systemType: 'watch_later'`), protected from deletion.
+  - Dedicated Watch Later view (`/playlist/watch-later`), status checking, and one-click quick action hover button on video cards.
+- **Watch History & Continue Watching (`WatchHistory` model & `/api/history`):**
+  - Tracking viewing activity for both long-form videos AND Shorts.
+  - Continue Watching carousel (`ContinueWatchingRow.jsx`) on the homepage for partially watched videos with progress bar and resume from saved timestamp.
+  - Automatic completion threshold: >= 90% watched marks `completed: true` and clears from continue watching.
+  - Dedicated Watch History dashboard (`/history`) with in-history search and entry removal.
+- **Weighted Recommendation Engine (`/api/recommendations`):**
+  - Multi-signal ranking algorithm prioritizing subscribed channels (+40), preferred watch history categories (+25), matching tags (+10), and view popularity.
+  - Trending videos endpoint (`/api/recommendations/trending`) for high-velocity recent content.
+  - Context-aware related videos endpoint (`/api/recommendations/related/:videoId`) for the Watch Page.
+- **Automated Test Suite:**
+  - `server/src/tests/search_playlists_history.test.js` covers 45 verification points with 100% pass rate.
+
+### Phase 8: Creator Analytics & Channel Customization (Next)
+- Channel analytics dashboard with real-time viewership graphs and retention charts.
+- Top-performing videos, impressions, click-through rate, and audience demographics.
+- Channel customization: branding, banner upload, featured video, channel trailer, and links.
+

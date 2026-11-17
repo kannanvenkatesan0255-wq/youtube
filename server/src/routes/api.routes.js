@@ -13,6 +13,11 @@ const commentRoutes = require('./comment.routes');
 const channelRoutes = require('./channel.routes');
 const subscriptionRoutes = require('./subscription.routes');
 const notificationRoutes = require('./notification.routes');
+const searchRoutes = require('./search.routes');
+const playlistRoutes = require('./playlist.routes');
+const watchLaterRoutes = require('./watchLater.routes');
+const historyRoutes = require('./history.routes');
+const recommendationRoutes = require('./recommendation.routes');
 
 const router = Router();
 
@@ -37,6 +42,13 @@ router.use('/channels', channelRoutes);
 router.use('/subscriptions', subscriptionRoutes);
 router.use('/notifications', notificationRoutes);
 
+// Mount active Phase 7 Search, Playlists, Watch History & Recommendations
+router.use('/search', searchRoutes);
+router.use('/playlists', playlistRoutes);
+router.use('/watch-later', watchLaterRoutes);
+router.use('/history', historyRoutes);
+router.use('/recommendations', recommendationRoutes);
+
 /**
  * Architectural Module Placeholders for Subsequent Phases
  */
@@ -57,10 +69,7 @@ const createPhasePlaceholder = (moduleName, targetPhase) => {
 };
 
 // Register architectural route boundaries for upcoming phases
-router.use('/playlists', createPhasePlaceholder('Playlists', 7));
-router.use('/search', createPhasePlaceholder('Search', 8));
-router.use('/history', createPhasePlaceholder('WatchHistory', 9));
-router.use('/analytics', createPhasePlaceholder('Analytics', 9));
-router.use('/admin', createPhasePlaceholder('Administration', 10));
+router.use('/analytics', createPhasePlaceholder('Analytics', 8));
+router.use('/admin', createPhasePlaceholder('Administration', 9));
 
 module.exports = router;

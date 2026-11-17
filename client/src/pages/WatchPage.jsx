@@ -4,7 +4,7 @@
  * theater mode, channel header, action buttons, expandable description, and related video recommendations.
  */
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Share2,
   Bookmark,
@@ -12,7 +12,10 @@ import {
   Check,
   Sparkles,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  ListVideo,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import VideoPlayer from '../components/player/VideoPlayer';
 import Avatar from '../components/common/Avatar';
@@ -20,13 +23,22 @@ import { VerifiedBadge, DurationBadge } from '../components/common/Badge';
 import LikeDislikeButtons from '../components/engagement/LikeDislikeButtons';
 import SubscribeButton from '../components/engagement/SubscribeButton';
 import CommentSection from '../components/comments/CommentSection';
+import SaveToPlaylistModal from '../components/playlists/SaveToPlaylistModal';
 import { videoService } from '../services/videoService';
+import playlistService from '../services/playlistService';
+import watchLaterService from '../services/watchLaterService';
+import historyService from '../services/historyService';
+import recommendationService from '../services/recommendationService';
 import { useAuth } from '../context/AuthContext';
 import { formatViews, formatTimeAgo, formatDuration } from '../utils/formatters';
 import { SAMPLE_VIDEOS } from '../utils/sampleData';
 
 export const WatchPage = () => {
   const { videoId } = useParams();
+  const [searchParams] = useSearchParams();
+  const listId = searchParams.get('list');
+  const listIndex = parseInt(searchParams.get('index'), 10) || 0;
+
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -43,10 +55,14 @@ export const WatchPage = () => {
   const [relatedVideos, setRelatedVideos] = useState([]);
   const [relatedLoading, setRelatedLoading] = useState(true);
 
+  // Playlist queue state
+  const [playlistQueue, setPlaylistQueue] = useState(null);
+
   // UI States
   const [isTheaterMode, setIsTheaterMode] = useState(false);
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
+  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
 
   // View tracking and progress save refs
   const hasTrackedViewRef = useRef(false);
@@ -110,7 +126,37 @@ export const WatchPage = () => {
   }, [videoId, user]);
 
   /**
-   * 2. Load Related Video Recommendations
+   * 2. Load Playlist Queue (if list parameter is present)
+   */
+  useEffect(() => {
+    if (!listId) {
+      setPlaylistQueue(null);
+      return;
+    }
+    let isMounted = true;
+    const fetchQueue = async () => {
+      try {
+        let res;
+        if (listId === 'WL') {
+          res = await watchLaterService.getWatchLater();
+        } else {
+          res = await playlistService.getPlaylistById(listId);
+        }
+        if (isMounted && res?.data) {
+          setPlaylistQueue(res.data);
+        }
+      } catch (err) {
+        console.debug('Failed to load playlist queue', err);
+      }
+    };
+    fetchQueue();
+    return () => {
+      isMounted = false;
+    };
+  }, [listId]);
+
+  /**
+   * 3. Load Related Video Recommendations
    */
   useEffect(() => {
     let isMounted = true;
@@ -118,15 +164,15 @@ export const WatchPage = () => {
 
     const fetchRelated = async () => {
       try {
-        const res = await videoService.getRelatedVideos(videoId, { limit: 15 });
+        const res = await recommendationService.getRelated(videoId, { limit: 15 });
         if (!isMounted) return;
 
-        let list = res.data?.data?.videos || [];
+        let list = res.data || [];
 
         // If backend returned fewer than 4 videos, backfill with sample videos
         if (list.length < 4) {
           const sampleBackfill = SAMPLE_VIDEOS.filter(
-            (sv) => sv.id !== videoId && !list.some((lv) => lv._id === sv.id)
+            (sv) => sv.id !== videoId && !list.some((lv) => (lv._id || lv.id) === sv.id)
           );
           list = [...list, ...sampleBackfill];
         }
@@ -150,7 +196,7 @@ export const WatchPage = () => {
   }, [videoId]);
 
   /**
-   * 3. Handle Time Updates: Track Legitimate View & Debounced Progress Save
+   * 4. Handle Time Updates: Track Legitimate View & Debounced Progress Save
    */
   const handleTimeUpdate = useCallback(
     (currentTime, duration) => {
@@ -174,10 +220,13 @@ export const WatchPage = () => {
         const nowSec = Math.floor(currentTime);
         if (Math.abs(nowSec - lastProgressSavedRef.current) >= 15) {
           lastProgressSavedRef.current = nowSec;
-          videoService
-            .saveProgress(videoId, {
-              progress: nowSec,
-              duration: Math.floor(duration)
+          historyService
+            .trackWatch({
+              videoId,
+              contentType: 'Video',
+              watchedSeconds: nowSec,
+              duration: Math.floor(duration),
+              completed: duration > 0 && nowSec / duration >= 0.9
             })
             .catch(() => {});
         }
@@ -187,17 +236,21 @@ export const WatchPage = () => {
   );
 
   /**
-   * 4. Save Final Progress on Unmount or Page Navigation
+   * 5. Save Final Progress on Unmount or Page Navigation
    */
   useEffect(() => {
     return () => {
       if (user && currentProgressRef.current.duration > 0) {
         const finalSecs = Math.floor(currentProgressRef.current.currentTime);
+        const totalDur = Math.floor(currentProgressRef.current.duration);
         if (finalSecs > 3) {
-          videoService
-            .saveProgress(videoId, {
-              progress: finalSecs,
-              duration: Math.floor(currentProgressRef.current.duration)
+          historyService
+            .trackWatch({
+              videoId,
+              contentType: 'Video',
+              watchedSeconds: finalSecs,
+              duration: totalDur,
+              completed: totalDur > 0 && finalSecs / totalDur >= 0.9
             })
             .catch(() => {});
         }
@@ -221,9 +274,20 @@ export const WatchPage = () => {
   };
 
   const handleNextVideo = () => {
+    if (playlistQueue && playlistQueue.videos && playlistQueue.videos.length > 0) {
+      const nextIdx = listIndex + 1;
+      if (nextIdx < playlistQueue.videos.length) {
+        const nextVid = playlistQueue.videos[nextIdx]?.video;
+        const nextId = nextVid?._id || nextVid;
+        if (nextId) {
+          navigate(`/watch/${nextId}?list=${listId}&index=${nextIdx}`);
+          return;
+        }
+      }
+    }
     if (relatedVideos.length > 0) {
-      const next = relatedVideos[0];
-      navigate(`/watch/${next._id || next.id}`);
+      const nextId = relatedVideos[0]._id || relatedVideos[0].id;
+      navigate(`/watch/${nextId}`);
     }
   };
 
@@ -376,7 +440,8 @@ export const WatchPage = () => {
                 {/* Save Button */}
                 <button
                   type="button"
-                  className="hidden sm:flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition text-xs font-semibold text-[#0f0f0f] dark:text-[#f1f1f1]"
+                  onClick={() => setIsSaveModalOpen(true)}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition text-xs font-semibold text-[#0f0f0f] dark:text-[#f1f1f1]"
                 >
                   <Bookmark className="w-4 h-4" />
                   <span>Save</span>
@@ -459,68 +524,120 @@ export const WatchPage = () => {
             />
           </div>
 
-          {/* Right Column: Related Video Recommendations */}
-          <div className="w-full lg:w-96 xl:w-[410px] flex-shrink-0">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-neutral-500 mb-3 px-1">
-              Related Videos
-            </h3>
+          {/* Right Column: Playlist Queue & Related Video Recommendations */}
+          <div className="w-full lg:w-96 xl:w-[410px] flex-shrink-0 space-y-4">
+            {/* Playlist Queue Header (if active) */}
+            {playlistQueue && (
+              <div className="p-4 rounded-2xl bg-neutral-100 dark:bg-neutral-800/80 border border-neutral-200 dark:border-neutral-700 shadow-sm">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2 truncate">
+                    <ListVideo className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                    <span className="font-bold text-xs truncate text-[#0f0f0f] dark:text-[#f1f1f1]">
+                      {playlistQueue.title || 'Playlist'}
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-neutral-500 flex-shrink-0">
+                    {listIndex + 1} / {playlistQueue.videos?.length || 0}
+                  </span>
+                </div>
 
-            {relatedLoading ? (
-              <div className="flex items-center justify-center py-12 text-neutral-400">
-                <Loader2 className="w-6 h-6 animate-spin" />
-              </div>
-            ) : (
-              <div className="flex flex-col gap-3">
-                {relatedVideos.map((rec) => {
-                  const recId = rec._id || rec.id;
-                  const durationFormatted =
-                    typeof rec.duration === 'number'
-                      ? formatDuration(rec.duration)
-                      : rec.duration;
+                <div className="flex items-center justify-between pt-2 border-t border-neutral-200 dark:border-neutral-700/60">
+                  <button
+                    onClick={() => {
+                      if (listIndex > 0) {
+                        const prevVid = playlistQueue.videos[listIndex - 1]?.video;
+                        const prevId = prevVid?._id || prevVid;
+                        if (prevId) navigate(`/watch/${prevId}?list=${listId}&index=${listIndex - 1}`);
+                      }
+                    }}
+                    disabled={listIndex <= 0}
+                    className="flex items-center gap-1 text-xs font-semibold text-neutral-700 dark:text-neutral-300 disabled:opacity-30 hover:text-blue-600"
+                  >
+                    <ChevronLeft className="w-4 h-4" /> Previous
+                  </button>
 
-                  return (
-                    <Link
-                      key={recId}
-                      to={`/watch/${recId}`}
-                      className="group flex gap-2.5 rounded-xl p-1 hover:bg-neutral-100 dark:hover:bg-neutral-800/80 transition"
-                    >
-                      {/* Compact Thumbnail (16:9 ratio, fixed 168px width) */}
-                      <div className="relative w-40 sm:w-44 flex-shrink-0 aspect-video rounded-xl overflow-hidden bg-neutral-200 dark:bg-neutral-800">
-                        <img
-                          src={rec.thumbnailUrl}
-                          alt={rec.title}
-                          loading="lazy"
-                          className="w-full h-full object-cover group-hover:scale-105 transition duration-200"
-                        />
-                        <DurationBadge durationText={durationFormatted} />
-                      </div>
-
-                      {/* Video Info */}
-                      <div className="flex-1 min-w-0 pr-1">
-                        <h4
-                          className="text-xs sm:text-sm font-semibold line-clamp-2 leading-tight text-[#0f0f0f] dark:text-[#f1f1f1] group-hover:text-blue-600 dark:group-hover:text-blue-400 transition"
-                          title={rec.title}
-                        >
-                          {rec.title}
-                        </h4>
-                        <div className="flex items-center gap-1 mt-1 text-[11px] text-neutral-500 hover:text-[#0f0f0f] dark:hover:text-white transition">
-                          <span className="truncate">{rec.channel?.name || 'VidTube Creator'}</span>
-                          {rec.channel?.isVerified && <VerifiedBadge />}
-                        </div>
-                        <div className="text-[11px] text-neutral-500 mt-0.5">
-                          <span>{formatViews(rec.views || 0)} views</span>
-                          <span className="mx-1">•</span>
-                          <span>{formatTimeAgo(rec.publishedAt || rec.createdAt)}</span>
-                        </div>
-                      </div>
-                    </Link>
-                  );
-                })}
+                  <button
+                    onClick={handleNextVideo}
+                    disabled={listIndex >= (playlistQueue.videos?.length || 0) - 1}
+                    className="flex items-center gap-1 text-xs font-semibold text-neutral-700 dark:text-neutral-300 disabled:opacity-30 hover:text-blue-600"
+                  >
+                    Next <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             )}
+
+            <div>
+              <h3 className="text-sm font-bold uppercase tracking-wider text-neutral-500 mb-3 px-1">
+                Related Videos
+              </h3>
+
+              {relatedLoading ? (
+                <div className="flex items-center justify-center py-12 text-neutral-400">
+                  <Loader2 className="w-6 h-6 animate-spin" />
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {relatedVideos.map((rec) => {
+                    const recId = rec._id || rec.id;
+                    const durationFormatted =
+                      typeof rec.duration === 'number'
+                        ? formatDuration(rec.duration)
+                        : rec.duration;
+
+                    return (
+                      <Link
+                        key={recId}
+                        to={`/watch/${recId}`}
+                        className="group flex gap-2.5 rounded-xl p-1 hover:bg-neutral-100 dark:hover:bg-neutral-800/80 transition"
+                      >
+                        {/* Compact Thumbnail (16:9 ratio, fixed 168px width) */}
+                        <div className="relative w-40 sm:w-44 flex-shrink-0 aspect-video rounded-xl overflow-hidden bg-neutral-200 dark:bg-neutral-800">
+                          <img
+                            src={rec.thumbnailUrl}
+                            alt={rec.title}
+                            loading="lazy"
+                            className="w-full h-full object-cover group-hover:scale-105 transition duration-200"
+                          />
+                          <DurationBadge durationText={durationFormatted} />
+                        </div>
+
+                        {/* Video Info */}
+                        <div className="flex-1 min-w-0 pr-1">
+                          <h4
+                            className="text-xs sm:text-sm font-semibold line-clamp-2 leading-tight text-[#0f0f0f] dark:text-[#f1f1f1] group-hover:text-blue-600 dark:group-hover:text-blue-400 transition"
+                            title={rec.title}
+                          >
+                            {rec.title}
+                          </h4>
+                          <div className="flex items-center gap-1 mt-1 text-[11px] text-neutral-500 hover:text-[#0f0f0f] dark:hover:text-white transition">
+                            <span className="truncate">{rec.channel?.name || 'VidTube Creator'}</span>
+                            {rec.channel?.isVerified && <VerifiedBadge />}
+                          </div>
+                          <div className="text-[11px] text-neutral-500 mt-0.5">
+                            <span>{formatViews(rec.views || 0)} views</span>
+                            <span className="mx-1">•</span>
+                            <span>{formatTimeAgo(rec.publishedAt || rec.createdAt)}</span>
+                          </div>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Save to Playlist Modal */}
+      {isSaveModalOpen && (
+        <SaveToPlaylistModal
+          videoId={video._id}
+          isOpen={isSaveModalOpen}
+          onClose={() => setIsSaveModalOpen(false)}
+        />
+      )}
     </div>
   );
 };
