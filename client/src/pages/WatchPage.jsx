@@ -87,15 +87,16 @@ export const WatchPage = () => {
         const res = await videoService.getPlaybackInfo(videoId);
         if (!isMounted) return;
 
-        const videoData = res.data?.data;
+        const videoData = res.data?.data || res.data;
         setVideo(videoData);
 
         // If authenticated, fetch saved watch progress
         if (user) {
           try {
             const progRes = await videoService.getProgress(videoId);
-            if (progRes.data?.data?.hasHistory && progRes.data.data.progress > 5) {
-              const savedSecs = progRes.data.data.progress;
+            const progData = progRes.data?.data || progRes.data;
+            if (progData?.hasHistory && progData.progress > 5) {
+              const savedSecs = progData.progress;
               setInitialTime(savedSecs);
               setResumeToast(`Resumed from ${formatDuration(savedSecs)}`);
               setTimeout(() => setResumeToast(null), 4000);
@@ -211,8 +212,9 @@ export const WatchPage = () => {
         videoService
           .trackView(videoId, { watchTime: Math.floor(currentTime) })
           .then((res) => {
-            if (res.data?.data?.incremented) {
-              setVideo((prev) => (prev ? { ...prev, views: res.data.data.views } : prev));
+            const trackData = res.data?.data || res.data;
+            if (trackData?.incremented) {
+              setVideo((prev) => (prev ? { ...prev, views: trackData.views } : prev));
             }
           })
           .catch((err) => console.debug('View tracking notice:', err.message));

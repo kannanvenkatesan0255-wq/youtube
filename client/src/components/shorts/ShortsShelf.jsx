@@ -18,7 +18,7 @@ export const ShortsShelf = () => {
       try {
         const res = await shortService.getShortsFeed({ limit: 6 });
         if (isMounted) {
-          const list = res.data?.data?.shorts || [];
+          const list = res.data?.shorts || res.data?.data?.shorts || (Array.isArray(res.data) ? res.data : []);
           setShorts(list.length > 0 ? list : SAMPLE_SHORTS);
         }
       } catch {

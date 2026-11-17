@@ -79,10 +79,11 @@ export const CommentItem = ({
 
     try {
       const res = await commentService.reactToComment(comment._id, reactionType);
-      if (res.data?.data) {
-        setUserReaction(res.data.data.userReaction);
-        setLikesCount(res.data.data.likesCount);
-        setDislikesCount(res.data.data.dislikesCount);
+      const rData = res.data?.data || res.data;
+      if (rData) {
+        setUserReaction(rData.userReaction);
+        setLikesCount(rData.likesCount);
+        setDislikesCount(rData.dislikesCount);
       }
     } catch {
       setUserReaction(prevReaction);
@@ -97,7 +98,8 @@ export const CommentItem = ({
       try {
         setIsLoadingReplies(true);
         const res = await commentService.getReplies(comment._id);
-        setReplies(res.data?.data?.replies || []);
+        const repliesList = res.data?.replies || res.data?.data?.replies || (Array.isArray(res.data) ? res.data : []);
+        setReplies(repliesList);
         setRepliesLoaded(true);
       } catch (err) {
         console.error('Failed to load replies:', err);
@@ -111,7 +113,7 @@ export const CommentItem = ({
   // Submit a reply
   const handleAddReply = async (text) => {
     const res = await commentService.replyToComment(comment._id, text);
-    const newReply = res.data?.data;
+    const newReply = res.data?.data || res.data;
     if (newReply) {
       setReplies((prev) => [...prev, newReply]);
       setShowReplies(true);
@@ -129,7 +131,7 @@ export const CommentItem = ({
   // Submit Edit
   const handleSaveEdit = async (newText) => {
     const res = await commentService.updateComment(comment._id, newText);
-    const updated = res.data?.data;
+    const updated = res.data?.data || res.data;
     if (updated) {
       setIsEditing(false);
       if (onCommentUpdated) {

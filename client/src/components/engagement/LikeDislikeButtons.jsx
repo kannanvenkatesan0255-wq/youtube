@@ -48,8 +48,9 @@ export const LikeDislikeButtons = ({
       engagementService
         .getUserReaction(contentType, contentId)
         .then((res) => {
-          if (isMounted && res.data?.data?.userReaction) {
-            setUserReaction(res.data.data.userReaction);
+          const data = res.data?.data || res.data;
+          if (isMounted && data?.userReaction) {
+            setUserReaction(data.userReaction);
           }
         })
         .catch(() => {});
@@ -102,7 +103,7 @@ export const LikeDislikeButtons = ({
     try {
       setIsLoading(true);
       const res = await engagementService.setReaction(contentType, contentId, reactionType);
-      const data = res.data?.data;
+      const data = res.data?.data || res.data;
 
       if (data) {
         setUserReaction(data.userReaction);

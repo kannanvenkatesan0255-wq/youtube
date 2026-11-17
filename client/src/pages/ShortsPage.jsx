@@ -42,7 +42,7 @@ export const ShortsPage = () => {
         const res = await shortService.getShortsFeed({ limit: 20 });
         if (!isMounted) return;
 
-        const dbShorts = res.data?.data?.shorts || [];
+        const dbShorts = res.data?.shorts || res.data?.data?.shorts || (Array.isArray(res.data) ? res.data : []);
         if (dbShorts.length > 0) {
           setShorts(dbShorts);
           // If URL param specified a particular shortId, jump to it

@@ -52,7 +52,7 @@ export const SubscribeButton = ({
         .getSubscriptionStatus(channelId)
         .then((res) => {
           if (!isMounted) return;
-          const data = res.data?.data;
+          const data = res.data?.data || res.data;
           if (data) {
             setIsSubscribed(Boolean(data.isSubscribed));
             if (typeof data.subscribersCount === 'number') {
@@ -100,7 +100,7 @@ export const SubscribeButton = ({
         res = await subscriptionService.unsubscribe(channelId);
       }
 
-      const data = res.data?.data;
+      const data = res.data?.data || res.data;
       if (data) {
         setIsSubscribed(Boolean(data.isSubscribed));
         if (typeof data.subscribersCount === 'number') {
