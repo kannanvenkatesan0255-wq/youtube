@@ -8,6 +8,11 @@ const authRoutes = require('./auth.routes');
 const userRoutes = require('./user.routes');
 const videoRoutes = require('./video.routes');
 const shortRoutes = require('./short.routes');
+const engagementRoutes = require('./engagement.routes');
+const commentRoutes = require('./comment.routes');
+const channelRoutes = require('./channel.routes');
+const subscriptionRoutes = require('./subscription.routes');
+const notificationRoutes = require('./notification.routes');
 
 const router = Router();
 
@@ -23,6 +28,14 @@ router.use('/videos', videoRoutes);
 
 // Mount active Phase 5 Shorts Upload & Vertical Feed Engine routes
 router.use('/shorts', shortRoutes);
+
+// Mount active Phase 6 Engagement, Comments, Subscriptions & Notification Engine routes
+router.use('/engagement', engagementRoutes);
+router.use('/likes', engagementRoutes);
+router.use('/comments', commentRoutes);
+router.use('/channels', channelRoutes);
+router.use('/subscriptions', subscriptionRoutes);
+router.use('/notifications', notificationRoutes);
 
 /**
  * Architectural Module Placeholders for Subsequent Phases
@@ -44,13 +57,8 @@ const createPhasePlaceholder = (moduleName, targetPhase) => {
 };
 
 // Register architectural route boundaries for upcoming phases
-router.use('/channels', createPhasePlaceholder('Channels', 4));
-router.use('/comments', createPhasePlaceholder('Comments', 6));
-router.use('/likes', createPhasePlaceholder('Likes', 6));
-router.use('/subscriptions', createPhasePlaceholder('Subscriptions', 7));
 router.use('/playlists', createPhasePlaceholder('Playlists', 7));
 router.use('/search', createPhasePlaceholder('Search', 8));
-router.use('/notifications', createPhasePlaceholder('Notifications', 8));
 router.use('/history', createPhasePlaceholder('WatchHistory', 9));
 router.use('/analytics', createPhasePlaceholder('Analytics', 9));
 router.use('/admin', createPhasePlaceholder('Administration', 10));

@@ -3,13 +3,14 @@
 <div align="center">
   <img src="client/public/vidtube-logo.svg" alt="VidTube Logo" width="120" />
   <h3>A Production-Oriented YouTube Replica Built with Modern Full-Stack Technologies</h3>
-  <p>Phase 5 Active: Shorts Upload, Vertical Video Feed & Interaction Engine</p>
+  <p>Phase 6 Active: Engagement, Comments, Subscriptions & Notification Engine</p>
 
   [![React](https://img.shields.io/badge/React-19.0-61DAFB?logo=react&logoColor=black)](https://react.dev/)
   [![Vite](https://img.shields.io/badge/Vite-6.1-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
   [![Tailwind CSS](https://img.shields.io/badge/TailwindCSS-3.4-38B2AC?logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
   [![Node.js](https://img.shields.io/badge/Node.js-24.x-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
   [![Express.js](https://img.shields.io/badge/Express-4.21-000000?logo=express&logoColor=white)](https://expressjs.com/)
+  [![Socket.IO](https://img.shields.io/badge/Socket.IO-4.8-010101?logo=socket.io&logoColor=white)](https://socket.io/)
   [![MongoDB](https://img.shields.io/badge/MongoDB-Atlas%20%2F%20Mongoose-47A248?logo=mongodb&logoColor=white)](https://mongoosejs.com/)
   [![Cloudinary](https://img.shields.io/badge/Cloudinary-Signed%20Direct%20Storage-3448C5?logo=cloudinary&logoColor=white)](https://cloudinary.com/)
   [![HLS.js](https://img.shields.io/badge/HLS.js-Adaptive%20Bitrate-FF9900)](https://github.com/video-dev/hls.js)
@@ -27,8 +28,9 @@
 - **Phase 2: Authentication & Security Engine** — ✅ COMPLETED (`05c768f`)
 - **Phase 3: Video Upload, Storage & Management Engine** — ✅ COMPLETED (`ed4929a`)
 - **Phase 4: Video Player, Watch Page & Adaptive Streaming Engine** — ✅ COMPLETED (`5811142`)
-- **Phase 5: Shorts Upload, Vertical Video Feed & Interaction Engine** — ✅ COMPLETED
-- **Phases 6–10** — Scheduled per [PROJECT_ROADMAP.md](docs/PROJECT_ROADMAP.md)
+- **Phase 5: Shorts Upload, Vertical Video Feed & Interaction Engine** — ✅ COMPLETED (`4fbf67c`)
+- **Phase 6: Engagement, Comments, Subscriptions & Notification Engine** — ✅ COMPLETED
+- **Phases 7–10** — Scheduled per [PROJECT_ROADMAP.md](docs/PROJECT_ROADMAP.md)
 
 ---
 
@@ -173,6 +175,59 @@ Phase 5 introduces a fully-featured, short-form vertical video experience modele
 
 ---
 
+## 💬 Phase 6 — Complete Engagement, Comments, Subscriptions & Notification Engine
+
+Phase 6 implements a production-grade, interactive social engine backed by MongoDB atomic operations and real-time Socket.IO broadcasts:
+
+### 1. Unified Mutual Reaction Engine (`/api/engagement`)
+- **Mutually Exclusive Likes & Dislikes**: Reacting to a Video, Short, or Comment enforces mutual exclusivity: liking automatically cancels dislike; disliking automatically cancels like; clicking the same reaction removes it.
+- **Zero-Drift Atomic Counting**: Database counts are modified via atomic MongoDB `$inc` operations, ensuring total counts remain consistent under high concurrency without background synchronization jobs.
+- **Optimistic UI Component (`LikeDislikeButtons.jsx`)**: Immediately updates button states and counts upon user interaction, rolling back gracefully if the API request fails.
+
+### 2. Threaded Comment System (`/api/comments`)
+- **Flat 1-Level Nested Replies**: Full discussion thread capabilities while strictly capping reply nesting depth at 1 level, avoiding infinite UI indentation cascades.
+- **Author Editing & Cascading Deletion**: Comment authors can edit their comments (marked with an `(edited)` indicator). When an author or content owner deletes a top-level comment, all associated replies are cascade-deleted, and parent counters are updated atomically.
+- **Sorting & Real-Time Sync**: Supports sorting by "Newest first" and "Top comments" (ranked by likes). Integrates directly with Socket.IO content rooms (`content:Video:<id>`, `content:Short:<id>`) for real-time live comment prepending.
+
+### 3. Channel Subscriptions & Subscriptions Feed (`/api/channels`, `/api/subscriptions`)
+- **Anti-Self Subscription**: Prevents creators from subscribing to their own channel (`HTTP 400`).
+- **Live Counter Sync**: Subscribing or unsubscribing atomically updates `channel.subscribersCount` and synchronizes UI status.
+- **Subscriptions Feed (`/subscriptions`, `/feed/subscriptions`)**: Delivers a chronological feed of latest uploads from subscribed channels, complete with an interactive top channel avatar carousel.
+
+### 4. Persistent & Real-Time Notification Pipeline (`/api/notifications`)
+- **Socket.IO Integration**: Handshake authentication using JWT, binding authenticated clients to private user rooms (`user:<userId>`).
+- **Automated Trigger Events**: Generates persistent database notifications when users subscribe, comment on content, reply to comments, or like content (strictly excluding self-actions).
+- **Header Notification Dropdown (`NotificationDropdown.jsx`)**: Displays live unread count badge, recent notifications list, "Mark all as read", and single notification dismissal.
+- **Dedicated Notifications Dashboard (`/notifications`)**: Full-page notifications center with "All" vs "Unread" filters, navigation links, and deletion support.
+
+---
+
+## 📡 API Specification — Engagement & Social (`/api/engagement`, `/api/comments`, `/api/notifications`)
+
+| Method | Endpoint | Description | Auth Required |
+|---|---|---|---|
+| `POST` | `/api/engagement/:contentType/:contentId/reaction` | Toggle or switch Like/Dislike on Video, Short, or Comment | **Yes** |
+| `DELETE` | `/api/engagement/:contentType/:contentId/reaction` | Remove active reaction on Video, Short, or Comment | **Yes** |
+| `GET` | `/api/engagement/:contentType/:contentId/reaction` | Query current user's reaction on target content | Optional |
+| `GET` | `/api/engagement/:contentType/:contentId/summary` | Query reaction counts summary and user reaction | Optional |
+| `GET` | `/api/comments/:contentType/:contentId` | Get top-level comments (paginated, sorted by top/newest) | Optional |
+| `POST` | `/api/comments/:contentType/:contentId` | Create new top-level comment on Video or Short | **Yes** |
+| `POST` | `/api/comments/:commentId/replies` | Reply to comment (enforces 1-level thread ceiling) | **Yes** |
+| `GET` | `/api/comments/:commentId/replies` | Get child replies for a specific comment | Optional |
+| `PATCH` | `/api/comments/:commentId` | Edit comment text (Author only, sets `isEdited: true`) | **Yes (Author)** |
+| `DELETE` | `/api/comments/:commentId` | Delete comment (Author or content owner, cascades replies) | **Yes (Author/Owner)** |
+| `POST` | `/api/channels/:channelId/subscribe` | Subscribe to channel (rejects self-subscription) | **Yes** |
+| `DELETE` | `/api/channels/:channelId/subscribe` | Unsubscribe from channel | **Yes** |
+| `GET` | `/api/channels/:channelId/subscription-status` | Query subscription state of current user | Optional |
+| `GET` | `/api/subscriptions/feed` | Chronological uploads feed from subscribed channels | **Yes** |
+| `GET` | `/api/notifications` | Paginated notifications list (supports `unreadOnly` filter) | **Yes** |
+| `GET` | `/api/notifications/unread-count` | Query unread notification badge count | **Yes** |
+| `PATCH` | `/api/notifications/:id/read` | Mark single notification as read | **Yes** |
+| `PATCH` | `/api/notifications/read-all` | Mark all user notifications as read | **Yes** |
+| `DELETE` | `/api/notifications/:id` | Delete notification | **Yes** |
+
+---
+
 ## 🛠️ Environment Configuration
 
 ### Backend (`server/.env`)
@@ -230,9 +285,12 @@ npm run build
 
 ## 🧪 Testing & Verification
 
-VidTube maintains automated test suites covering all completed phases (88/88 passing tests):
+VidTube maintains automated test suites covering all completed phases (125/125 passing tests):
 
 ```bash
+# Run Phase 6 Engagement & Notifications test suite (37 tests)
+npm run test:engagement --workspace=server
+
 # Run Phase 5 Shorts Upload & Vertical Feed test suite (24 tests)
 npm run test:shorts --workspace=server
 
@@ -245,6 +303,45 @@ npm run test:video --workspace=server
 # Run Phase 2 Authentication & Security test suite (18 tests)
 npm run test:auth --workspace=server
 ```
+
+### Verified Phase 6 Test Cases (37/37 Passing):
+1. ✅ User B likes Video A (likesCount increments to 1, userReaction is "like")
+2. ✅ Switch reaction like -> dislike (likesCount decrements to 0, dislikesCount increments to 1)
+3. ✅ Switch reaction dislike -> like (likesCount increments to 1, dislikesCount decrements to 0)
+4. ✅ Remove reaction (clears userReaction, decrements likesCount to 0)
+5. ✅ Duplicate like handling is consistent and safe (idempotent)
+6. ✅ Unauthenticated reaction attempt rejected with 401 Unauthorized
+7. ✅ Invalid reaction type rejected with 400 Bad Request
+8. ✅ User B likes Short A (likesCount increments to 1)
+9. ✅ Switch Short like -> dislike (likesCount decrements to 0, dislikesCount increments to 1)
+10. ✅ Remove Short reaction (clears userReaction, resets counters to 0)
+11. ✅ User B posts top-level comment on Video A (201 Created, video commentsCount increments)
+12. ✅ Empty comment text rejected with 400 Bad Request
+13. ✅ User B posts comment on Short A (201 Created)
+14. ✅ Author edits own comment (200 OK, isEdited === true)
+15. ✅ Unauthorized comment modification rejected with 403 Forbidden
+16. ✅ User A replies to User B comment (201 Created, parent repliesCount increments)
+17. ✅ Replying to a reply enforces 1-level thread depth ceiling
+18. ✅ Fetch comment replies (returns both threaded replies)
+19. ✅ User B likes a comment (Comment likesCount increments to 1)
+20. ✅ Non-owner cannot delete comment (403 Forbidden)
+21. ✅ Author deletes top-level comment (cascades deletion of all child replies)
+22. ✅ User B subscribes to Channel A (channel subscribersCount increments, isSubscribed === true)
+23. ✅ Self-subscription rejected with 400 Bad Request
+24. ✅ Duplicate subscription call is idempotent and safe (subscribersCount remains 1)
+25. ✅ Subscription status returns isSubscribed: true
+26. ✅ Subscriptions feed includes uploads from subscribed Channel A
+27. ✅ User B unsubscribes from Channel A (subscribersCount decrements to 0, isSubscribed === false)
+28. ✅ Subscription status after unsubscribe returns isSubscribed: false
+29. ✅ Subscription notification delivered to channel creator
+30. ✅ Comment notification delivered to video creator
+31. ✅ Reply notification delivered to parent comment author
+32. ✅ Self-action exclusion: creator commenting on own video does NOT generate self-notification
+33. ✅ Get unread notification count returns valid integer
+34. ✅ Mark single notification as read (200 OK, isRead === true)
+35. ✅ Mark all notifications as read resets unreadCount to 0
+36. ✅ Delete notification succeeds (200 OK)
+37. ✅ Unauthorized user cannot delete another user notification (404/403 rejected)
 
 ### Verified Phase 5 Test Cases (24/24 Passing):
 1. ✅ Health check endpoint returns healthy system and connected database

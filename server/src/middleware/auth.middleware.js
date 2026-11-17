@@ -119,5 +119,7 @@ const authorize = (...roles) => {
 module.exports = {
   authenticate,
   optionalAuthenticate,
-  authorize
+  authorize,
+  requireAuth: authenticate,
+  optionalAuth: optionalAuthenticate
 };

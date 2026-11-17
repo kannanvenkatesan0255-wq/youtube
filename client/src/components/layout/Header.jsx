@@ -28,6 +28,7 @@ import { useAuth } from '../../hooks/useAuth';
 import Logo from '../common/Logo';
 import Avatar from '../common/Avatar';
 import { NotificationBadge } from '../common/Badge';
+import NotificationDropdown from '../notifications/NotificationDropdown';
 
 export const Header = () => {
   const { toggleSidebar } = useSidebar();
@@ -229,15 +230,8 @@ export const Header = () => {
                   <span className="hidden xl:inline">Create</span>
                 </Link>
 
-                <div className="relative">
-                  <button
-                    title="Notifications"
-                    className="p-2 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 text-[#0f0f0f] dark:text-[#f1f1f1] transition-colors"
-                  >
-                    <Bell className="w-5 h-5" />
-                    <NotificationBadge count={3} />
-                  </button>
-                </div>
+                {/* Notifications Dropdown */}
+                <NotificationDropdown />
 
                 {/* User Profile Avatar with YouTube Dropdown Menu */}
                 <div className="relative ml-1" ref={userMenuRef}>

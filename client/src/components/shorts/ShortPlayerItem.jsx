@@ -16,12 +16,14 @@ import {
   Music2,
   Disc,
   MoreVertical,
-  Check,
-  Bell
+  Check
 } from 'lucide-react';
 import Avatar from '../common/Avatar';
 import { VerifiedBadge } from '../common/Badge';
+import SubscribeButton from '../engagement/SubscribeButton';
 import { shortService } from '../../services/shortService';
+import engagementService from '../../services/engagementService';
+import { useAuth } from '../../context/AuthContext';
 import { formatViews } from '../../utils/formatters';
 
 export const ShortPlayerItem = ({
@@ -32,16 +34,36 @@ export const ShortPlayerItem = ({
   onOpenComments,
   onShare
 }) => {
+  const { user, isAuthenticated } = useAuth();
   const videoRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0); // 0 - 100
   const [isTitleExpanded, setIsTitleExpanded] = useState(false);
-  const [isSubscribed, setIsSubscribed] = useState(false);
   const [likeState, setLikeState] = useState(null); // 'like' | 'dislike' | null
   const [likesCount, setLikesCount] = useState(short.likesCount || 0);
+  const [dislikesCount, setDislikesCount] = useState(short.dislikesCount || 0);
+  const [isReacting, setIsReacting] = useState(false);
   const hasTrackedViewRef = useRef(false);
 
   const shortId = short._id || short.id;
+
+  // Fetch initial user reaction
+  useEffect(() => {
+    let isMounted = true;
+    if (isAuthenticated && shortId) {
+      engagementService
+        .getUserReaction('Short', shortId)
+        .then((res) => {
+          if (isMounted && res?.data?.reaction) {
+            setLikeState(res.data.reaction);
+          }
+        })
+        .catch(() => {});
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [shortId, isAuthenticated]);
 
   /**
    * Handle Active State Playback Lifecycle
@@ -113,25 +135,103 @@ export const ShortPlayerItem = ({
     }
   };
 
-  const handleLike = (e) => {
+  const handleLike = async (e) => {
     e.stopPropagation();
-    if (likeState === 'like') {
+    if (!isAuthenticated) {
+      alert('Please sign in to like this Short');
+      return;
+    }
+    if (isReacting) return;
+
+    const prevReaction = likeState;
+    const prevLikes = likesCount;
+    const prevDislikes = dislikesCount;
+
+    // Optimistic calculation
+    if (prevReaction === 'like') {
       setLikeState(null);
-      setLikesCount((c) => Math.max(0, c - 1));
+      setLikesCount(Math.max(0, prevLikes - 1));
+    } else if (prevReaction === 'dislike') {
+      setLikeState('like');
+      setLikesCount(prevLikes + 1);
+      setDislikesCount(Math.max(0, prevDislikes - 1));
     } else {
-      if (likeState === 'dislike') setLikeState('like');
-      else setLikeState('like');
-      setLikesCount((c) => c + 1);
+      setLikeState('like');
+      setLikesCount(prevLikes + 1);
+    }
+
+    setIsReacting(true);
+    try {
+      if (prevReaction === 'like') {
+        const res = await engagementService.removeReaction('Short', shortId);
+        if (res?.data) {
+          setLikesCount(res.data.likesCount);
+          setDislikesCount(res.data.dislikesCount);
+        }
+      } else {
+        const res = await engagementService.setReaction('Short', shortId, 'like');
+        if (res?.data) {
+          setLikesCount(res.data.likesCount);
+          setDislikesCount(res.data.dislikesCount);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to react to short:', err);
+      setLikeState(prevReaction);
+      setLikesCount(prevLikes);
+      setDislikesCount(prevDislikes);
+    } finally {
+      setIsReacting(false);
     }
   };
 
-  const handleDislike = (e) => {
+  const handleDislike = async (e) => {
     e.stopPropagation();
-    if (likeState === 'dislike') {
+    if (!isAuthenticated) {
+      alert('Please sign in to dislike this Short');
+      return;
+    }
+    if (isReacting) return;
+
+    const prevReaction = likeState;
+    const prevLikes = likesCount;
+    const prevDislikes = dislikesCount;
+
+    // Optimistic calculation
+    if (prevReaction === 'dislike') {
       setLikeState(null);
-    } else {
-      if (likeState === 'like') setLikesCount((c) => Math.max(0, c - 1));
+      setDislikesCount(Math.max(0, prevDislikes - 1));
+    } else if (prevReaction === 'like') {
       setLikeState('dislike');
+      setDislikesCount(prevDislikes + 1);
+      setLikesCount(Math.max(0, prevLikes - 1));
+    } else {
+      setLikeState('dislike');
+      setDislikesCount(prevDislikes + 1);
+    }
+
+    setIsReacting(true);
+    try {
+      if (prevReaction === 'dislike') {
+        const res = await engagementService.removeReaction('Short', shortId);
+        if (res?.data) {
+          setLikesCount(res.data.likesCount);
+          setDislikesCount(res.data.dislikesCount);
+        }
+      } else {
+        const res = await engagementService.setReaction('Short', shortId, 'dislike');
+        if (res?.data) {
+          setLikesCount(res.data.likesCount);
+          setDislikesCount(res.data.dislikesCount);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to react to short:', err);
+      setLikeState(prevReaction);
+      setLikesCount(prevLikes);
+      setDislikesCount(prevDislikes);
+    } finally {
+      setIsReacting(false);
     }
   };
 
@@ -194,21 +294,14 @@ export const ShortPlayerItem = ({
             </div>
 
             {/* Subscribe Button */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsSubscribed((s) => !s);
-              }}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition active:scale-95 flex items-center gap-1 ${
-                isSubscribed
-                  ? 'bg-neutral-800 text-white hover:bg-neutral-700'
-                  : 'bg-white text-black hover:bg-neutral-200'
-              }`}
-            >
-              {isSubscribed && <Check className="w-3.5 h-3.5" />}
-              <span>{isSubscribed ? 'Subscribed' : 'Subscribe'}</span>
-            </button>
+            <div onClick={(e) => e.stopPropagation()}>
+              <SubscribeButton
+                channelId={short.channel?._id}
+                channelOwnerId={short.channel?.owner || short.owner}
+                initialSubscribersCount={short.channel?.subscribersCount}
+                initialIsSubscribed={short.channel?.isSubscribed}
+              />
+            </div>
           </div>
 
           {/* Short Title & Tags */}

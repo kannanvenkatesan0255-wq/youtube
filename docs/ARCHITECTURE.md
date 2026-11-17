@@ -223,5 +223,65 @@ VidTube strictly enforces YouTube's design tokens:
               - Studio: Dual Video / Short upload and management tabs with 9:16 aspect ratio preview
 ```
 
+---
+
+## 8. Phase 6 Engagement, Comments, Subscriptions & Notification Engine
+
+### Unified Reaction Engine & Mutual Exclusivity
+
+VidTube enforces strict mutual exclusivity between Likes and Dislikes across all content types (`Video`, `Short`, `Comment`):
+
+```
+                   ┌──────────────────────────────────────────────┐
+                   │ User Action: Click "Like" or "Dislike"       │
+                   └──────────────────────┬───────────────────────┘
+                                          │
+                                          ▼
+                   ┌──────────────────────────────────────────────┐
+                   │ Query existing reaction in Like collection   │
+                   └──────────────────────┬───────────────────────┘
+                                          │
+               ┌──────────────────────────┼──────────────────────────┐
+               │                          │                          │
+        [No Reaction]              [Same Reaction]           [Opposite Reaction]
+               │                          │                          │
+               ▼                          ▼                          ▼
+     Insert new reaction        Remove reaction (toggle)    Update reaction record
+     $inc: { likes: +1 }        $inc: { likes: -1 }         $inc: { likes: +1, dislikes: -1 }
+```
+
+- **Atomic DB Counters**: Total counts for likes and dislikes are stored directly on the target document (`Video`, `Short`, `Comment`) and toggled via atomic `$inc` operations, eliminating count drift.
+- **Optimistic UI with Rollback**: `LikeDislikeButtons.jsx` renders state changes immediately and reverts with a toast notification if the API call fails.
+
+### Threaded Comment System (1-Level Maximum Nesting)
+
+VidTube implements YouTube's flat threaded comment hierarchy:
+- **Top-Level Comments**: `parentComment: null`, mapped directly to `Video` or `Short`.
+- **Replies**: `parentComment: <rootCommentId>`. If a user attempts to reply to a reply, the backend automatically sets `parentComment` to the root comment's ID, preventing infinite indentation cascades.
+- **Cascade Deletion**: When an author or content owner deletes a top-level comment, all associated replies are purged in a single atomic transaction/operation (`Comment.deleteMany({ parentComment: id })`), and the parent video's `commentsCount` is decremented by `1 + repliesCount`.
+
+### Channel Subscriptions & Subscriptions Feed
+
+- **Anti-Self Subscription**: Prevents creators from subscribing to their own channel (`channel.owner.equals(userId)` returns `HTTP 400`).
+- **Live Counter Sync**: Subscribing or unsubscribing atomically updates `channel.subscribersCount` (`$inc: { subscribersCount: 1 / -1 }`).
+- **Subscriptions Feed**: Queries `Subscription` to find subscribed `channelIds`, then performs a fast indexed query on `Video.find({ channel: { $in: channelIds }, visibility: 'public', processingStatus: { $ne: 'failed' } }).sort({ createdAt: -1 })`.
+
+### Persistent & Real-Time Notification Pipeline
+
+```
+[Trigger Action] (Subscribe / Comment / Reply / Like)
+       │
+       ├── 1. Exclude Self-Action (actor !== recipient)
+       │
+       ├── 2. Persist Notification Document:
+       │      Recipient, sender/actor, type, contentId, contentType, message, link, isRead: false
+       │
+       └── 3. Real-Time Socket.IO Dispatch:
+              - Target user room: `user:${recipientId}`
+              - Event: `notification:new`
+              - Header NotificationDropdown receives event, increments badge, and prepends to list
+```
+
+
 
 

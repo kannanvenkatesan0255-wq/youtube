@@ -6,13 +6,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
-  ThumbsUp,
-  ThumbsDown,
   Share2,
   Bookmark,
   MoreHorizontal,
   Check,
-  Bell,
   Sparkles,
   Loader2,
   AlertCircle
@@ -20,6 +17,9 @@ import {
 import VideoPlayer from '../components/player/VideoPlayer';
 import Avatar from '../components/common/Avatar';
 import { VerifiedBadge, DurationBadge } from '../components/common/Badge';
+import LikeDislikeButtons from '../components/engagement/LikeDislikeButtons';
+import SubscribeButton from '../components/engagement/SubscribeButton';
+import CommentSection from '../components/comments/CommentSection';
 import { videoService } from '../services/videoService';
 import { useAuth } from '../context/AuthContext';
 import { formatViews, formatTimeAgo, formatDuration } from '../utils/formatters';
@@ -46,9 +46,6 @@ export const WatchPage = () => {
   // UI States
   const [isTheaterMode, setIsTheaterMode] = useState(false);
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
-  const [isSubscribed, setIsSubscribed] = useState(false);
-  const [likeState, setLikeState] = useState(null); // 'like' | 'dislike' | null
-  const [likesCount, setLikesCount] = useState(0);
   const [shareCopied, setShareCopied] = useState(false);
 
   // View tracking and progress save refs
@@ -73,7 +70,6 @@ export const WatchPage = () => {
 
         const videoData = res.data?.data;
         setVideo(videoData);
-        setLikesCount(videoData.likesCount || 0);
 
         // If authenticated, fetch saved watch progress
         if (user) {
@@ -212,26 +208,6 @@ export const WatchPage = () => {
   /**
    * Interactive Action Handlers
    */
-  const handleLike = () => {
-    if (likeState === 'like') {
-      setLikeState(null);
-      setLikesCount((c) => Math.max(0, c - 1));
-    } else {
-      if (likeState === 'dislike') setLikeState('like');
-      else setLikeState('like');
-      setLikesCount((c) => c + 1);
-    }
-  };
-
-  const handleDislike = () => {
-    if (likeState === 'dislike') {
-      setLikeState(null);
-    } else {
-      if (likeState === 'like') setLikesCount((c) => Math.max(0, c - 1));
-      setLikeState('dislike');
-    }
-  };
-
   const handleShare = () => {
     navigator.clipboard
       ?.writeText(window.location.href)
@@ -367,50 +343,25 @@ export const WatchPage = () => {
                   </span>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setIsSubscribed((s) => !s)}
-                  className={`ml-2 px-4 py-2 rounded-full text-xs font-semibold transition active:scale-95 flex items-center gap-1.5 ${
-                    isSubscribed
-                      ? 'bg-neutral-200 dark:bg-neutral-800 text-[#0f0f0f] dark:text-white hover:bg-neutral-300 dark:hover:bg-neutral-700'
-                      : 'bg-[#0f0f0f] dark:bg-white text-white dark:text-[#0f0f0f] hover:bg-neutral-800 dark:hover:bg-neutral-200 shadow-sm'
-                  }`}
-                >
-                  {isSubscribed && <Bell className="w-3.5 h-3.5" />}
-                  <span>{isSubscribed ? 'Subscribed' : 'Subscribe'}</span>
-                </button>
+                <div className="ml-2">
+                  <SubscribeButton
+                    channelId={video.channel?._id}
+                    channelOwnerId={video.owner?._id || video.owner}
+                    initialSubscribersCount={video.channel?.subscribersCount}
+                    initialIsSubscribed={video.channel?.isSubscribed}
+                  />
+                </div>
               </div>
 
               {/* Action Buttons: Like/Dislike, Share, Save */}
               <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
-                {/* Like / Dislike Pill Group */}
-                <div className="flex items-center rounded-full bg-neutral-100 dark:bg-neutral-800 overflow-hidden text-xs font-semibold">
-                  <button
-                    type="button"
-                    onClick={handleLike}
-                    className={`flex items-center gap-1.5 px-3.5 py-2 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition ${
-                      likeState === 'like' ? 'text-[#FF0033]' : 'text-[#0f0f0f] dark:text-[#f1f1f1]'
-                    }`}
-                  >
-                    <ThumbsUp
-                      className={`w-4 h-4 ${likeState === 'like' ? 'fill-[#FF0033]' : ''}`}
-                    />
-                    <span>{formatViews(likesCount)}</span>
-                  </button>
-                  <div className="w-[1px] h-5 bg-neutral-300 dark:bg-neutral-700" />
-                  <button
-                    type="button"
-                    onClick={handleDislike}
-                    aria-label="Dislike"
-                    className={`px-3 py-2 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition ${
-                      likeState === 'dislike' ? 'text-[#FF0033]' : 'text-[#0f0f0f] dark:text-[#f1f1f1]'
-                    }`}
-                  >
-                    <ThumbsDown
-                      className={`w-4 h-4 ${likeState === 'dislike' ? 'fill-[#FF0033]' : ''}`}
-                    />
-                  </button>
-                </div>
+                {/* Unified Mutual Like / Dislike Pill Group */}
+                <LikeDislikeButtons
+                  contentType="Video"
+                  contentId={video._id}
+                  initialLikesCount={video.likesCount}
+                  initialDislikesCount={video.dislikesCount}
+                />
 
                 {/* Share Button */}
                 <button
@@ -500,22 +451,12 @@ export const WatchPage = () => {
               )}
             </div>
 
-            {/* Comments Placeholder (Phase 6 Foundation) */}
-            <div className="mt-8 pt-6 border-t border-neutral-200 dark:border-neutral-800">
-              <div className="flex items-center gap-4 mb-4">
-                <h3 className="text-base font-bold text-[#0f0f0f] dark:text-[#f1f1f1]">
-                  Comments ({video.commentsCount || 0})
-                </h3>
-              </div>
-              <div className="p-6 rounded-2xl border border-dashed border-neutral-300 dark:border-neutral-800 text-center text-neutral-500 text-xs sm:text-sm">
-                <p className="font-medium text-[#0f0f0f] dark:text-[#f1f1f1] mb-1">
-                  Community Comments Engine
-                </p>
-                <p className="text-xs text-neutral-400">
-                  Full threaded discussions, sentiment badges, and pinned creator comments will activate in Phase 6.
-                </p>
-              </div>
-            </div>
+            {/* Community Comments Section */}
+            <CommentSection
+              contentType="Video"
+              contentId={video._id}
+              commentsCount={video.commentsCount || 0}
+            />
           </div>
 
           {/* Right Column: Related Video Recommendations */}

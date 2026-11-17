@@ -15,6 +15,8 @@ import VideoUploadPage from '../pages/studio/VideoUploadPage';
 import MyVideosPage from '../pages/studio/MyVideosPage';
 import WatchPage from '../pages/WatchPage';
 import ShortsPage from '../pages/ShortsPage';
+import SubscriptionsFeedPage from '../pages/SubscriptionsFeedPage';
+import NotificationsPage from '../pages/NotificationsPage';
 import PlaceholderPage from '../pages/PlaceholderPage';
 import NotFoundPage from '../pages/NotFoundPage';
 import { ProtectedRoute, GuestRoute } from '../components/navigation/RouteGuards';
@@ -110,7 +112,12 @@ export const AppRoutes = () => {
         {/* Phase 5: VidTube Shorts Dedicated Feed */}
         <Route path="/shorts" element={<ShortsPage />} />
         <Route path="/shorts/:shortId" element={<ShortsPage />} />
-        <Route path="/subscriptions" element={<PlaceholderPage title="Subscriptions Feed" phase={7} />} />
+
+        {/* Phase 6: Subscriptions & Notifications Engine */}
+        <Route path="/subscriptions" element={<SubscriptionsFeedPage />} />
+        <Route path="/feed/subscriptions" element={<SubscriptionsFeedPage />} />
+        <Route path="/notifications" element={<NotificationsPage />} />
+
         <Route path="/history" element={<PlaceholderPage title="Watch History" phase={9} />} />
         <Route path="/playlists" element={<PlaceholderPage title="Your Playlists" phase={7} />} />
         <Route path="/you" element={<PlaceholderPage title="Your Channel & Profile" phase={4} />} />

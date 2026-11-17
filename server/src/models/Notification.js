@@ -15,7 +15,8 @@ const notificationSchema = new mongoose.Schema(
     },
     sender: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
+      ref: 'User',
+      index: true
     },
     channel: {
       type: mongoose.Schema.Types.ObjectId,
@@ -24,7 +25,8 @@ const notificationSchema = new mongoose.Schema(
     type: {
       type: String,
       enum: Object.values(NOTIFICATION_TYPES),
-      required: true
+      required: true,
+      index: true
     },
     message: {
       type: String,
@@ -34,9 +36,26 @@ const notificationSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Video'
     },
+    short: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Short'
+    },
     comment: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Comment'
+    },
+    contentId: {
+      type: mongoose.Schema.Types.ObjectId,
+      index: true
+    },
+    contentType: {
+      type: String,
+      enum: ['Video', 'Short', 'Comment', 'Channel', 'system'],
+      default: 'Video'
+    },
+    link: {
+      type: String,
+      default: ''
     },
     isRead: {
       type: Boolean,
@@ -45,10 +64,18 @@ const notificationSchema = new mongoose.Schema(
     }
   },
   {
-    timestamps: true
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true }
   }
 );
 
+// Virtual alias: actor -> sender
+notificationSchema.virtual('actor').get(function () {
+  return this.sender;
+});
+
+notificationSchema.index({ recipient: 1, isRead: 1, createdAt: -1 });
 notificationSchema.index({ recipient: 1, createdAt: -1 });
 
 const Notification = mongoose.models.Notification || mongoose.model('Notification', notificationSchema);

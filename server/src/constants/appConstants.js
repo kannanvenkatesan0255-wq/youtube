@@ -60,6 +60,8 @@ const NOTIFICATION_TYPES = Object.freeze({
   NEW_COMMENT: 'new_comment',
   COMMENT_REPLY: 'comment_reply',
   NEW_SUBSCRIBER: 'new_subscriber',
+  VIDEO_LIKE: 'video_like',
+  SHORT_LIKE: 'short_like',
   SYSTEM: 'system'
 });
 

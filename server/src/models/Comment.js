@@ -12,16 +12,31 @@ const commentSchema = new mongoose.Schema(
       trim: true,
       maxlength: [2000, 'Comment cannot exceed 2000 characters']
     },
+    contentType: {
+      type: String,
+      enum: ['Video', 'Short'],
+      default: 'Video',
+      index: true
+    },
+    contentId: {
+      type: mongoose.Schema.Types.ObjectId,
+      index: true
+    },
     video: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Video',
-      required: true,
+      index: true
+    },
+    short: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Short',
       index: true
     },
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: true
+      required: true,
+      index: true
     },
     channel: {
       type: mongoose.Schema.Types.ObjectId,
@@ -32,6 +47,11 @@ const commentSchema = new mongoose.Schema(
       ref: 'Comment',
       default: null,
       index: true
+    },
+    repliesCount: {
+      type: Number,
+      default: 0,
+      min: 0
     },
     likesCount: {
       type: Number,
@@ -50,6 +70,9 @@ const commentSchema = new mongoose.Schema(
     isPinned: {
       type: Boolean,
       default: false
+    },
+    pinnedAt: {
+      type: Date
     }
   },
   {
@@ -59,7 +82,18 @@ const commentSchema = new mongoose.Schema(
   }
 );
 
-commentSchema.index({ video: 1, createdAt: -1 });
+commentSchema.virtual('text')
+  .get(function () {
+    return this.content;
+  })
+  .set(function (val) {
+    this.content = val;
+  });
+
+commentSchema.index({ video: 1, parentComment: 1, createdAt: -1 });
+commentSchema.index({ short: 1, parentComment: 1, createdAt: -1 });
+commentSchema.index({ contentId: 1, contentType: 1, parentComment: 1, createdAt: -1 });
+commentSchema.index({ user: 1, createdAt: -1 });
 
 const Comment = mongoose.models.Comment || mongoose.model('Comment', commentSchema);
 module.exports = Comment;

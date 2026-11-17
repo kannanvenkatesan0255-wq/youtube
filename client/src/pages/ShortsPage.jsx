@@ -256,6 +256,7 @@ export const ShortsPage = () => {
       <ShortsCommentsDrawer
         isOpen={Boolean(commentsShort)}
         onClose={() => setCommentsShort(null)}
+        shortId={commentsShort?._id || commentsShort?.id}
         commentsCount={commentsShort?.commentsCount || 0}
         shortTitle={commentsShort?.title || ''}
       />

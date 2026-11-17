@@ -114,8 +114,32 @@ VidTube is a production-oriented, full-stack video sharing and adaptive streamin
 - **Automated Test Suite:**
   - `server/src/tests/shorts.test.js` covers 24 verification points with 100% pass rate.
 
-### Phase 6: Engagement & Social System (Next)
-- Real-time comment system with nested threaded replies.
-- Pinning comments by channel owners.
-- Polymorphic Like/Dislike system for videos, shorts, and comments.
+### Phase 6: Complete Engagement, Comments, Subscriptions & Notification Engine (Completed)
+- **Polymorphic Reaction Engine (`Like` model & `/api/engagement`):**
+  - Mutually exclusive Like / Dislike reactions on Videos, Shorts, and Comments with atomic counters (`$inc: { likesCount: 1, dislikesCount: -1 }`).
+  - Idempotent toggling and removal endpoints (`POST /api/engagement/:contentType/:contentId/reaction`, `DELETE /api/engagement/:contentType/:contentId/reaction`).
+  - Optimistic frontend UI (`LikeDislikeButtons.jsx`) with instant visual feedback and error rollback.
+- **Threaded Comment Engine (`Comment` model & `/api/comments`):**
+  - Full CRUD for top-level comments on long-form Videos and Shorts with pagination and sorting ("Top comments" vs "Newest first").
+  - 1-level maximum nested replies (`POST /api/comments/:commentId/replies`, `GET /api/comments/:commentId/replies`) ensuring flat, clean discussion threads.
+  - Granular permissions: authors can edit their comment text (`PATCH /api/comments/:id`, marks `isEdited: true`); author or content owner can delete comments (`DELETE /api/comments/:id`, cascades deletion of all child replies and atomically updates parent comments count).
+  - Integrated into `WatchPage.jsx` via `<CommentSection />` and `ShortsPage.jsx` via `<ShortsCommentsDrawer />`.
+- **Channel Subscription Engine (`Subscription` model & `/api/channels`):**
+  - Subscribe/unsubscribe actions (`POST /api/channels/:id/subscribe`, `DELETE /api/channels/:id/subscribe`) with atomic `subscribersCount` tracking.
+  - Strict self-subscription prevention (HTTP 400).
+  - Optimistic frontend `<SubscribeButton />` with authenticated state sync and live subscriber counts.
+  - Subscriptions feed (`GET /api/subscriptions/feed`, `/subscriptions`, `/feed/subscriptions`) returning newest public uploads from subscribed creators with channel avatar carousel.
+- **Persistent & Real-Time Notification Engine (`Notification` model & Socket.IO):**
+  - Socket.IO server initialized on HTTP server with JWT authentication handshake and isolated user/content rooms.
+  - Automated database-backed notifications created on new subscriber, video comment, short comment, comment reply, and likes (with self-action exclusion).
+  - Header bell dropdown (`NotificationDropdown.jsx`) with unread badge count, mark-as-read, and mark-all-as-read actions.
+  - Dedicated Notifications page (`/notifications`) with "All" vs "Unread" filters and deletion support.
+- **Automated Test Suite:**
+  - `server/src/tests/engagement.test.js` covers 37 verification points with 100% pass rate.
+
+### Phase 7: Playlists, Watch Later & Library System (Next)
+- Custom user playlists (Create, Update, Delete, Reorder).
+- System playlists: "Watch Later" and "Liked Videos".
+- Collaborative and private/unlisted playlists.
+- Add/remove videos and Shorts to playlists from Watch Page and Feed.
 - Sentiment counting and optimistic UI updates.

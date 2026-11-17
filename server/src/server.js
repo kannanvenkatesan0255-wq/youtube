@@ -6,6 +6,7 @@ const app = require('./app');
 const { config } = require('./config/env');
 const { connectDB, closeDB } = require('./config/db');
 const { logger } = require('./utils/logger');
+const { initSocket } = require('./services/socket.service');
 
 let server;
 
@@ -17,13 +18,16 @@ const startServer = async () => {
     // Start HTTP Server
     server = app.listen(config.port, () => {
       console.log('\n==================================================');
-      console.log('   VIDTUBE API SERVER — PHASE 1 INITIALIZED');
+      console.log('   VIDTUBE API SERVER — PHASE 6 ACTIVE');
       console.log('==================================================');
       logger.info(`Server running in [${config.nodeEnv}] mode on port: ${config.port}`);
       logger.info(`Health check available at: http://localhost:${config.port}/api/health`);
       logger.info(`Client origin allowed: ${config.clientUrl}`);
       console.log('==================================================\n');
     });
+
+    // Initialize Socket.IO real-time notification engine
+    initSocket(server);
   } catch (error) {
     logger.error('Failed to start VidTube server:', error);
     process.exit(1);
