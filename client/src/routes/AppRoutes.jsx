@@ -36,11 +36,53 @@ import StudioPlaylistsPage from '../pages/studio/StudioPlaylistsPage';
 import StudioCustomizationPage from '../pages/studio/StudioCustomizationPage';
 import StudioSettingsPage from '../pages/studio/StudioSettingsPage';
 
-import { ProtectedRoute, GuestRoute } from '../components/navigation/RouteGuards';
+// Admin Dedicated Pages & Layout
+import AdminLayout from '../layouts/AdminLayout';
+import AdminDashboardPage from '../pages/admin/AdminDashboardPage';
+import AdminModerationQueuePage from '../pages/admin/AdminModerationQueuePage';
+import AdminReportsPage from '../pages/admin/AdminReportsPage';
+import AdminUsersPage from '../pages/admin/AdminUsersPage';
+import AdminChannelsPage from '../pages/admin/AdminChannelsPage';
+import AdminVideosPage from '../pages/admin/AdminVideosPage';
+import AdminShortsPage from '../pages/admin/AdminShortsPage';
+import AdminCommentsPage from '../pages/admin/AdminCommentsPage';
+import AdminAuditLogsPage from '../pages/admin/AdminAuditLogsPage';
+import AdminAnalyticsPage from '../pages/admin/AdminAnalyticsPage';
+import AdminSettingsPage from '../pages/admin/AdminSettingsPage';
+import AdminAnnouncementsPage from '../pages/admin/AdminAnnouncementsPage';
+
+import { ProtectedRoute, GuestRoute, AdminRoute } from '../components/navigation/RouteGuards';
 
 export const AppRoutes = () => {
   const location = useLocation();
   const isStudioRoute = location.pathname.startsWith('/studio');
+  const isAdminRoute = location.pathname.startsWith('/admin');
+
+  // Dedicated Admin Control Center & Safety Shell
+  if (isAdminRoute) {
+    return (
+      <AdminRoute>
+        <AdminLayout>
+          <Routes>
+            <Route path="/admin" element={<AdminDashboardPage />} />
+            <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+            <Route path="/admin/moderation" element={<AdminModerationQueuePage />} />
+            <Route path="/admin/reports" element={<AdminReportsPage />} />
+            <Route path="/admin/users" element={<AdminUsersPage />} />
+            <Route path="/admin/channels" element={<AdminChannelsPage />} />
+            <Route path="/admin/videos" element={<AdminVideosPage />} />
+            <Route path="/admin/shorts" element={<AdminShortsPage />} />
+            <Route path="/admin/comments" element={<AdminCommentsPage />} />
+            <Route path="/admin/audit-logs" element={<AdminAuditLogsPage />} />
+            <Route path="/admin/analytics" element={<AdminAnalyticsPage />} />
+            <Route path="/admin/settings" element={<AdminSettingsPage />} />
+            <Route path="/admin/announcements" element={<AdminAnnouncementsPage />} />
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+        </AdminLayout>
+      </AdminRoute>
+    );
+  }
 
   // Dedicated Creator Studio Application Shell
   if (isStudioRoute) {

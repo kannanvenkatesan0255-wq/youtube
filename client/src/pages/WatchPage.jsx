@@ -15,7 +15,8 @@ import {
   AlertCircle,
   ListVideo,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Flag
 } from 'lucide-react';
 import VideoPlayer from '../components/player/VideoPlayer';
 import Avatar from '../components/common/Avatar';
@@ -24,6 +25,7 @@ import LikeDislikeButtons from '../components/engagement/LikeDislikeButtons';
 import SubscribeButton from '../components/engagement/SubscribeButton';
 import CommentSection from '../components/comments/CommentSection';
 import SaveToPlaylistModal from '../components/playlists/SaveToPlaylistModal';
+import ReportModal from '../components/common/ReportModal';
 import { videoService } from '../services/videoService';
 import playlistService from '../services/playlistService';
 import watchLaterService from '../services/watchLaterService';
@@ -63,6 +65,7 @@ export const WatchPage = () => {
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
   // View tracking and progress save refs
   const hasTrackedViewRef = useRef(false);
@@ -447,6 +450,17 @@ export const WatchPage = () => {
                   <span>Save</span>
                 </button>
 
+                {/* Report Button */}
+                <button
+                  type="button"
+                  onClick={() => setIsReportModalOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition text-xs font-semibold text-[#0f0f0f] dark:text-[#f1f1f1]"
+                  title="Report Video"
+                >
+                  <Flag className="w-3.5 h-3.5 text-red-500" />
+                  <span>Report</span>
+                </button>
+
                 {/* More Options */}
                 <button
                   type="button"
@@ -636,6 +650,17 @@ export const WatchPage = () => {
           videoId={video._id}
           isOpen={isSaveModalOpen}
           onClose={() => setIsSaveModalOpen(false)}
+        />
+      )}
+
+      {/* Content Moderation Reporting Modal */}
+      {isReportModalOpen && (
+        <ReportModal
+          isOpen={isReportModalOpen}
+          onClose={() => setIsReportModalOpen(false)}
+          contentType="video"
+          contentId={video._id}
+          contentTitle={video.title}
         />
       )}
     </div>

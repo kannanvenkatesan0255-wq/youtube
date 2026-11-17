@@ -19,6 +19,9 @@ const watchLaterRoutes = require('./watchLater.routes');
 const historyRoutes = require('./history.routes');
 const recommendationRoutes = require('./recommendation.routes');
 const studioRoutes = require('./studio.routes');
+const adminRoutes = require('./admin.routes');
+const reportRoutes = require('./report.routes');
+const { getActiveAnnouncement } = require('../controllers/admin.controller');
 
 const router = Router();
 
@@ -54,6 +57,11 @@ router.use('/recommendations', recommendationRoutes);
 router.use('/studio', studioRoutes);
 router.use('/analytics', studioRoutes);
 
+// Mount active Phase 9 Content Moderation, Reporting & Admin Control Center
+router.use('/reports', reportRoutes);
+router.get('/announcements/active', getActiveAnnouncement);
+router.use('/admin', adminRoutes);
+
 /**
  * Architectural Module Placeholders for Subsequent Phases
  */
@@ -74,6 +82,6 @@ const createPhasePlaceholder = (moduleName, targetPhase) => {
 };
 
 // Register architectural route boundaries for upcoming phases
-router.use('/admin', createPhasePlaceholder('Administration', 9));
+router.use('/streaming-cluster', createPhasePlaceholder('Adaptive HLS & Infrastructure', 10));
 
 module.exports = router;

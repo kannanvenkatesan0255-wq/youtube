@@ -68,6 +68,16 @@ const channelSchema = new mongoose.Schema(
       enum: ['public', 'unlisted', 'private'],
       default: 'public'
     },
+    status: {
+      type: String,
+      enum: ['active', 'suspended', 'restricted'],
+      default: 'active',
+      index: true
+    },
+    statusReason: {
+      type: String,
+      default: ''
+    },
     links: [
       {
         title: { type: String, trim: true },

@@ -15,9 +15,9 @@ VidTube is a production-oriented, full-stack video sharing and adaptive streamin
 | **Phase 5** | **VidTube Shorts & Vertical Player** | 9:16 Vertical Video Engine, Infinite Scroll, Sound Overlay, Gestures | **COMPLETED** (`4fbf67c`) |
 | **Phase 6** | **Engagement & Community System** | Nested Comment Threads, Like/Dislike, Subscriptions, Real-Time Notifications | **COMPLETED** (`00bdb86`) |
 | **Phase 7** | **Search, Playlists, History & Recommendations** | Multi-Type Search, Custom Playlists, Watch Later, History Resume, Recommendation Engine | **COMPLETED** (`7c0ce32`) |
-| **Phase 8** | **Creator Studio, Channel Analytics & Content Management** | Dashboard, Zero-Fill Timeseries, Unified Content Management, Audience Demographics, CSV Export | **COMPLETED** |
-| **Phase 9** | **Admin Moderation & Platform Governance** | Content Moderation, Flagged Videos, User Roles & Ban Controls | *Next* |
-| **Phase 10** | **Adaptive HLS Streaming & Production Deploy** | Adaptive Bitrate HLS, Redis Caching, CI/CD Pipeline, Final Polish | *Scheduled* |
+| **Phase 8** | **Creator Studio, Channel Analytics & Content Management** | Dashboard, Zero-Fill Timeseries, Unified Content Management, Audience Demographics, CSV Export | **COMPLETED** (`93876d2`) |
+| **Phase 9** | **Admin Control Center, Content Moderation & Platform Security** | Full Admin Panel, User/Channel/Video/Short/Comment Moderation, Reporting Queue, Immutable Audit Logs, System Announcements, Global Settings | **COMPLETED** |
+| **Phase 10** | **Adaptive HLS Streaming & Production Deploy** | Adaptive Bitrate HLS, Redis Caching, CI/CD Pipeline, Final Polish | *Next* |
 
 ---
 
@@ -195,8 +195,37 @@ VidTube is a production-oriented, full-stack video sharing and adaptive streamin
 - **Automated Test Suite:**
   - `server/src/tests/studio_analytics.test.js` covers 83 verification points with 100% pass rate.
 
-### Phase 9: Admin Moderation & Platform Governance (Next)
-- Content moderation dashboard, reported/flagged content review, and administrative action logs.
-- User management, suspension, strikes, and role management.
+### Phase 9: Admin Control Center, Content Moderation & Platform Security (Completed)
+- **Role-Based Access Control & Privilege Elevation:**
+  - Roles: `user`, `creator`, `admin`, `super_admin`.
+  - Endpoint guard: `authorize('admin', 'super_admin')`.
+  - Frontend guard: `AdminRoute` protecting all `/admin/*` routes.
+  - Role management strictly restricted to `super_admin`.
+  - Immediate token invalidation for suspended/banned accounts across all authenticated endpoints (`accountStatus !== 'active'` blocks access).
+- **Comprehensive Content Moderation Pipeline:**
+  - Videos: Flag, warning, age-restriction, and removal with automatic unpublishing/republishing.
+  - Shorts: Vertical feed moderation and restrictions.
+  - Comments: Toxic comments filtering and removal with target content tracking.
+  - Channels: Creator broadcasting status management (active, restricted, suspended).
+- **User Content Reporting & Priority Queue:**
+  - User-facing `ReportModal.jsx` component for submitting reports across 8 standardized violation categories.
+  - Compound unique index preventing duplicate pending reports from the same user.
+  - Administrative resolution modal supporting actions: `content_removed`, `content_restricted`, `user_suspended`, `warning_issued`, `no_action`.
+- **Immutable Security Audit Logging:**
+  - Every administrative action recorded with administrator ID, action, target, justification, IP address, user agent, and metadata.
+  - Interactive forensic inspector drawer in the UI.
+- **Platform Global Settings & System Announcements:**
+  - Live configuration of upload limits, video format whitelists, registration toggles, and maintenance mode.
+  - Platform announcements broadcast system with user dismissal flags and category priorities.
+- **Dedicated Admin Control Center UI (`/admin`):**
+  - Dedicated `AdminLayout.jsx` with custom topbar, branding, and collapsible sidebar.
+  - Pages: Dashboard, Priority Queue, User Reports, Users Directory, Channels, Videos, Shorts, Comments, Audit Logs, Analytics, Settings, Announcements.
+- **Automated Verification:**
+  - 66 test points in `server/src/tests/admin_moderation.test.js` passing with 100% success.
+
+### Phase 10: Adaptive HLS Streaming, Performance Hardening & Production Deployment (Next)
+- Adaptive bitrate HLS transcoding cluster deployment.
+- Redis multi-tier caching for high-volume read endpoints.
+- CI/CD automation pipeline and final production hardening.
 
 

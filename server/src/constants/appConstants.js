@@ -6,7 +6,76 @@
 const USER_ROLES = Object.freeze({
   USER: 'user',
   CREATOR: 'creator',
-  ADMIN: 'admin'
+  ADMIN: 'admin',
+  SUPER_ADMIN: 'super_admin'
+});
+
+const ACCOUNT_STATUS = Object.freeze({
+  ACTIVE: 'active',
+  SUSPENDED: 'suspended',
+  BANNED: 'banned',
+  DEACTIVATED: 'deactivated'
+});
+
+const REPORT_REASONS = Object.freeze([
+  'spam',
+  'harassment',
+  'hate',
+  'impersonation',
+  'copyright',
+  'inappropriate',
+  'misleading',
+  'other'
+]);
+
+const REPORT_STATUS = Object.freeze({
+  PENDING: 'pending',
+  UNDER_REVIEW: 'under_review',
+  RESOLVED: 'resolved',
+  REJECTED: 'rejected',
+  ESCALATED: 'escalated'
+});
+
+const MODERATION_ACTIONS = Object.freeze({
+  NONE: 'none',
+  WARNING: 'warning',
+  RESTRICTED: 'restricted',
+  REMOVED: 'removed',
+  RESTORED: 'restored'
+});
+
+const MODERATION_STATUS = Object.freeze({
+  CLEAN: 'clean',
+  FLAGGED: 'flagged',
+  RESTRICTED: 'restricted',
+  REMOVED: 'removed'
+});
+
+const AUDIT_ACTIONS = Object.freeze({
+  USER_SUSPEND: 'user_suspend',
+  USER_RESTORE: 'user_restore',
+  USER_BAN: 'user_ban',
+  USER_ROLE_CHANGE: 'user_role_change',
+  CHANNEL_SUSPEND: 'channel_suspend',
+  CHANNEL_RESTORE: 'channel_restore',
+  VIDEO_MODERATE: 'video_moderate',
+  SHORT_MODERATE: 'short_moderate',
+  COMMENT_MODERATE: 'comment_moderate',
+  REPORT_RESOLVE: 'report_resolve',
+  REPORT_REJECT: 'report_reject',
+  REPORT_ESCALATE: 'report_escalate',
+  SETTINGS_UPDATE: 'settings_update',
+  ANNOUNCEMENT_CREATE: 'announcement_create',
+  ANNOUNCEMENT_UPDATE: 'announcement_update',
+  ANNOUNCEMENT_DELETE: 'announcement_delete'
+});
+
+const ANNOUNCEMENT_TYPES = Object.freeze({
+  INFO: 'info',
+  WARNING: 'warning',
+  CRITICAL: 'critical',
+  MAINTENANCE: 'maintenance',
+  UPDATE: 'update'
 });
 
 const VIDEO_VISIBILITY = Object.freeze({
@@ -81,6 +150,13 @@ const STREAMING_RESOLUTIONS = Object.freeze([
 
 module.exports = {
   USER_ROLES,
+  ACCOUNT_STATUS,
+  REPORT_REASONS,
+  REPORT_STATUS,
+  MODERATION_ACTIONS,
+  MODERATION_STATUS,
+  AUDIT_ACTIONS,
+  ANNOUNCEMENT_TYPES,
   VIDEO_VISIBILITY,
   VIDEO_PROCESSING_STATUS,
   VIDEO_CATEGORIES,

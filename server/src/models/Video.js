@@ -106,6 +106,25 @@ const videoSchema = new mongoose.Schema(
       type: String,
       default: ''
     },
+    moderationStatus: {
+      type: String,
+      enum: ['clean', 'flagged', 'restricted', 'removed'],
+      default: 'clean',
+      index: true
+    },
+    moderationReason: {
+      type: String,
+      default: ''
+    },
+    moderatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null
+    },
+    moderatedAt: {
+      type: Date,
+      default: null
+    },
     language: {
       type: String,
       default: 'English'

@@ -9,6 +9,7 @@ import Sidebar from '../components/layout/Sidebar';
 import MiniSidebar from '../components/layout/MiniSidebar';
 import MobileNav from '../components/layout/MobileNav';
 import ErrorBoundary from '../components/common/ErrorBoundary';
+import AnnouncementBanner from '../components/common/AnnouncementBanner';
 import { useSidebar } from '../hooks/useSidebar';
 
 export const MainLayout = ({ children }) => {
@@ -35,6 +36,7 @@ export const MainLayout = ({ children }) => {
       <main
         className={`pt-14 pb-16 lg:pb-6 transition-all duration-200 ${getContentMarginClass()}`}
       >
+        <AnnouncementBanner />
         <ErrorBoundary>
           {children}
         </ErrorBoundary>

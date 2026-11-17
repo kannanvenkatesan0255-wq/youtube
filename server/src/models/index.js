@@ -14,6 +14,10 @@ const Notification = require('./Notification');
 const WatchHistory = require('./WatchHistory');
 const SearchHistory = require('./SearchHistory');
 const AnalyticsEvent = require('./AnalyticsEvent');
+const Report = require('./Report');
+const AuditLog = require('./AuditLog');
+const PlatformSetting = require('./PlatformSetting');
+const Announcement = require('./Announcement');
 
 module.exports = {
   User,
@@ -27,6 +31,10 @@ module.exports = {
   Notification,
   WatchHistory,
   SearchHistory,
-  AnalyticsEvent
+  AnalyticsEvent,
+  Report,
+  AuditLog,
+  PlatformSetting,
+  Announcement
 };
 

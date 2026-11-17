@@ -408,6 +408,127 @@ const analyticsEventSchema = new mongoose.Schema({
 - **Zero-Fill Continuity Algorithm**: Timeseries queries bucket daily counts and backfill every single calendar day in the requested period. Days with zero events render as honest zeroes (flat line at 0), strictly preventing fake synthetic trends or missing data gaps.
 - **Security & Authorization**: All Studio routes enforce JWT authentication and creator channel verification. Modifying or deleting another creator's content is strictly rejected with `HTTP 404/403`.
 
+---
+
+## 11. Phase 9 — Admin Control Center, Content Moderation & Platform Security Architecture
+
+### Architectural Overview
+
+```
+[Administrator Control Plane: /admin]
+          │
+          ├── 1. Governance & Access Control:
+          │      - Multi-Tier RBAC: user, creator, admin, super_admin
+          │      - Endpoint Guards: requireAuth + authorize('admin', 'super_admin')
+          │      - Frontend Route Guard: AdminRoute protecting /admin/*
+          │      - Account Status Invalidation: Suspended / Banned users blocked on all APIs
+          │      - Super Admin privilege isolation: Only Super Admins may alter user roles
+          │
+          ├── 2. Content Moderation Pipeline:
+          │      - Video Moderation: Warnings, Restrictions, Removals (auto-unpublishing)
+          │      - Shorts Moderation: Vertical feed compliance & audio review
+          │      - Comments Moderation: Toxic thread suppression & target tracing
+          │      - Channel Management: Suspending/restricting non-compliant creators
+          │
+          ├── 3. Community Safety & Reports Queue:
+          │      - User Report Submission Modal: 8 standard violation categories
+          │      - Anti-Spam Compound Unique Index: { reporter, contentId, status }
+          │      - Priority Triage Queue: Fast resolution & automated enforcement
+          │
+          ├── 4. Immutable Forensic Audit Trail (AuditLog Model):
+          │      - Append-only collection recording all administrative operations
+          │      - Captured: admin, action, targetType, targetId, reason, IP, userAgent, metadata
+          │      - Forensic metadata inspector drawer in frontend
+          │
+          └── 5. Platform Announcements & Global Settings:
+                 - Real-time announcement banners with priority and expiration
+                 - Live platform settings: upload capacities, format whitelist, maintenance mode
+```
+
+### Models & Schema Architecture
+
+#### 1. Report Model (`Report.js`)
+```javascript
+const reportSchema = new mongoose.Schema({
+  reporter: { type: ObjectId, ref: 'User', required: true, index: true },
+  contentType: { type: String, enum: ['video', 'short', 'comment', 'channel', 'user'], required: true },
+  contentId: { type: ObjectId, required: true, index: true },
+  video: { type: ObjectId, ref: 'Video' },
+  short: { type: ObjectId, ref: 'Short' },
+  comment: { type: ObjectId, ref: 'Comment' },
+  channel: { type: ObjectId, ref: 'Channel' },
+  reportedUser: { type: ObjectId, ref: 'User' },
+  reason: {
+    type: String,
+    enum: ['spam', 'harassment', 'hate_speech', 'misinformation', 'violence', 'copyright', 'sexual_content', 'other'],
+    required: true
+  },
+  description: { type: String, maxlength: 500 },
+  status: { type: String, enum: ['pending', 'under_review', 'resolved', 'dismissed'], default: 'pending', index: true },
+  moderator: { type: ObjectId, ref: 'User' },
+  resolutionNotes: { type: String },
+  resolutionAction: {
+    type: String,
+    enum: ['content_removed', 'content_restricted', 'user_suspended', 'warning_issued', 'no_action']
+  },
+  resolvedAt: { type: Date }
+}, { timestamps: true });
+
+// Anti-spam compound unique index
+reportSchema.index({ reporter: 1, contentId: 1, status: 1 });
+```
+
+#### 2. AuditLog Model (`AuditLog.js`)
+```javascript
+const auditLogSchema = new mongoose.Schema({
+  admin: { type: ObjectId, ref: 'User', required: true, index: true },
+  action: { type: String, required: true, index: true },
+  targetType: {
+    type: String,
+    enum: ['User', 'Channel', 'Video', 'Short', 'Comment', 'Report', 'PlatformSetting', 'Announcement'],
+    required: true
+  },
+  targetId: { type: mongoose.Schema.Types.Mixed },
+  reason: { type: String, maxlength: 1000 },
+  metadata: { type: mongoose.Schema.Types.Mixed },
+  ipAddress: { type: String },
+  userAgent: { type: String }
+}, { timestamps: true });
+```
+
+#### 3. PlatformSetting Model (`PlatformSetting.js`)
+```javascript
+const platformSettingSchema = new mongoose.Schema({
+  key: { type: String, required: true, unique: true, default: 'global' },
+  allowNewRegistrations: { type: Boolean, default: true },
+  maintenanceMode: { type: Boolean, default: false },
+  maintenanceMessage: { type: String, default: 'VidTube is currently undergoing maintenance.' },
+  maxVideoUploadSizeMb: { type: Number, default: 500 },
+  maxShortUploadDurationSec: { type: Number, default: 60 },
+  allowedVideoFormats: [{ type: String, default: ['mp4', 'mov', 'avi', 'mkv', 'webm'] }],
+  autoFlagThresholdReports: { type: Number, default: 5 }
+}, { timestamps: true });
+```
+
+#### 4. Announcement Model (`Announcement.js`)
+```javascript
+const announcementSchema = new mongoose.Schema({
+  title: { type: String, required: true, trim: true, maxlength: 100 },
+  message: { type: String, required: true, trim: true, maxlength: 500 },
+  type: {
+    type: String,
+    enum: ['info', 'warning', 'critical', 'feature', 'maintenance'],
+    default: 'info'
+  },
+  priority: { type: Number, default: 1 },
+  isActive: { type: Boolean, default: true, index: true },
+  dismissible: { type: Boolean, default: true },
+  expiresAt: { type: Date },
+  createdBy: { type: ObjectId, ref: 'User' }
+}, { timestamps: true });
+```
+
+
 
 
 

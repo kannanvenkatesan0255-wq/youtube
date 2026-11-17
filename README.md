@@ -3,7 +3,7 @@
 <div align="center">
   <img src="client/public/vidtube-logo.svg" alt="VidTube Logo" width="120" />
   <h3>A Production-Oriented YouTube Replica Built with Modern Full-Stack Technologies</h3>
-  <p>Phase 8 Active: Creator Studio, Channel Analytics & Content Management Dashboard</p>
+  <p>Phase 9 Active: Admin Control Center, Content Moderation & Platform Security</p>
 
   [![React](https://img.shields.io/badge/React-19.0-61DAFB?logo=react&logoColor=black)](https://react.dev/)
   [![Vite](https://img.shields.io/badge/Vite-6.1-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
@@ -31,8 +31,9 @@
 - **Phase 5: Shorts Upload, Vertical Video Feed & Interaction Engine** — ✅ COMPLETED (`4fbf67c`)
 - **Phase 6: Engagement, Comments, Subscriptions & Notification Engine** — ✅ COMPLETED (`00bdb86`)
 - **Phase 7: Search, Playlists, Watch History & Recommendation Engine** — ✅ COMPLETED (`7c0ce32`)
-- **Phase 8: Creator Studio, Channel Analytics & Content Management Dashboard** — ✅ COMPLETED
-- **Phases 9–10** — Scheduled per [PROJECT_ROADMAP.md](docs/PROJECT_ROADMAP.md)
+- **Phase 8: Creator Studio, Channel Analytics & Content Management Dashboard** — ✅ COMPLETED (`93876d2`)
+- **Phase 9: Admin Control Center, Content Moderation & Platform Security** — ✅ COMPLETED
+- **Phase 10: Performance Optimization, Production Hardening & Deployment** — 🔜 Scheduled per [PROJECT_ROADMAP.md](docs/PROJECT_ROADMAP.md)
 
 ---
 
@@ -553,6 +554,106 @@ Phase 8 implements a complete, professional Creator Studio and analytics engine 
 81. ✅ Formula injection prefix "@" escaped with leading single quote
 82. ✅ GET `/analytics/overview` aliased route returns 200
 83. ✅ GET `/analytics/timeseries` aliased route returns 200
+
+---
+
+## 🛡️ Phase 9 — Admin Control Center, Content Moderation & Platform Security
+
+Phase 9 establishes a centralized administrative control system, content moderation pipeline, forensic audit logging, and platform security management.
+
+### 1. Role-Based Access Control (RBAC) & Privilege Separation
+- **Four-Tier Architecture:** `user` (viewer/consumer), `creator` (video publishing), `admin` (moderation and safety operations), `super_admin` (system root, role escalation, critical platform settings).
+- **Backend Guard:** `authorize('admin', 'super_admin')` middleware applied across `/api/admin/*`.
+- **Frontend Guard:** `AdminRoute` wrapper strictly preventing unauthorized navigation to `/admin/*`.
+- **Privilege Isolation:** Only `super_admin` users may promote or demote user roles; administrative self-suspension and self-demotion are blocked by validation rules.
+- **Immediate Session Enforcement:** As soon as an account is marked `suspended` or `banned`, all subsequent authenticated requests with existing JWTs are rejected with `HTTP 403 Forbidden`.
+
+### 2. Full Platform Content Moderation
+- **Videos Moderation (`/api/admin/videos`):** Audit long-form videos with status filters (`clean`, `flagged`, `restricted`, `removed`). Removing a video unpublishes it immediately from feeds while preserving it in the database for appeals. Restoring sets status back to `clean` and unhides it.
+- **Shorts Moderation (`/api/admin/shorts`):** Audit vertical short-form video feed, filter audio copyright claims, and enforce age restrictions.
+- **Comments Moderation (`/api/admin/comments`):** Moderate abusive comments and replies with direct parent/target reference links.
+- **Channels Moderation (`/api/admin/channels`):** Restrict or suspend non-compliant creator channels.
+
+### 3. Community Safety Reporting System
+- **User-Facing Reporting Modal (`ReportModal.jsx`):** Enables viewers on watch pages, shorts feeds, and comments to report violations across 8 categorized reasons (`spam`, `harassment`, `hate_speech`, `misinformation`, `violence`, `copyright`, `sexual_content`, `other`).
+- **Duplicate Prevention Index:** Compound unique index `{ reporter: 1, contentId: 1, status: 1 }` prevents ticket spam.
+- **Priority Moderation Queue (`/admin/moderation` & `/admin/reports`):** Fast-triage interface with instant dismissal or enforcement action (`content_removed`, `content_restricted`, `user_suspended`, `warning_issued`).
+
+### 4. Forensic Immutable Audit Trail (`AuditLog`)
+- Every administrative action is automatically logged in an append-only collection with administrator ID, action name, target type and ID, justification, IP address, user agent, and metadata snapshot.
+- Full UI inspector modal with JSON payload viewer on `/admin/audit-logs`.
+
+### 5. System Announcements & Global Platform Settings
+- **Announcements Engine (`Announcement`):** Banner system supporting priorities, categories (`info`, `warning`, `critical`, `feature`, `maintenance`), user dismissal flags, and public broadcast (`/api/announcements/active`).
+- **Global Platform Settings (`PlatformSetting`):** Live configuration of upload size limits (MB), short video duration thresholds, registration toggles, and maintenance mode.
+
+### 6. Phase 9 Verified Automated Tests (66/66 Passing)
+1. ✅ Unauthenticated request to `/admin/dashboard` returns 401
+2. ✅ Ordinary Viewer registered successfully
+3. ✅ Creator registered successfully
+4. ✅ Ordinary user calling `/admin/dashboard` rejected with 403 Forbidden
+5. ✅ Creator calling `/admin/dashboard` rejected with 403 Forbidden
+6. ✅ User cannot promote themselves to admin via profile update
+7. ✅ Admin login returns 200
+8. ✅ Super Admin login returns 200
+9. ✅ GET `/admin/dashboard` returns 200 for Administrator
+10. ✅ Reports real total registered users
+11. ✅ Reports real total channels
+12. ✅ Reports pending reports count
+13. ✅ Returns recent users list
+14. ✅ Returns recent videos list
+15. ✅ GET `/admin/users` with query returns 200
+16. ✅ Search finds target user
+17. ✅ Target email matches
+18. ✅ Password hash is strictly excluded from response
+19. ✅ GET `/admin/users/:id` returns user details and stats
+20. ✅ PATCH `/admin/users/:id/status` successfully suspends account
+21. ✅ User accountStatus is now suspended
+22. ✅ Suspended user blocked from performing authenticated operations (403)
+23. ✅ User account restored to active
+24. ✅ Restored user can access authenticated endpoints normally
+25. ✅ Administrator self-suspension is rejected with 400 Bad Request
+26. ✅ Super Admin can elevate user role to Admin
+27. ✅ Creator role updated to admin
+28. ✅ Ordinary Admin cannot promote users (Super Admin only)
+29. ✅ GET `/admin/channels` returns 200
+30. ✅ Returns channel directory
+31. ✅ PATCH `/admin/channels/:id/status` updates channel status
+32. ✅ Channel status is suspended
+33. ✅ PATCH `/admin/videos/:id/moderation` applies action
+34. ✅ Video moderationStatus set to "removed"
+35. ✅ Removed video is automatically unpublished
+36. ✅ Video moderationStatus restored to clean
+37. ✅ Restored video republished to public
+38. ✅ PATCH `/admin/shorts/:id/moderation` restricts short
+39. ✅ Short moderationStatus set to restricted
+40. ✅ PATCH `/admin/comments/:id/moderation` removes comment
+41. ✅ Comment moderationStatus is removed
+42. ✅ POST `/reports` creates a pending report (201 Created)
+43. ✅ Report status is pending
+44. ✅ Duplicate pending report rejected with 409 Conflict
+45. ✅ Report for non-existent content returns 404 Not Found
+46. ✅ GET `/admin/reports` returns reports list
+47. ✅ Contains submitted report
+48. ✅ GET `/admin/reports/:id` returns full report details
+49. ✅ Report reason matches
+50. ✅ PATCH `/admin/reports/:id` resolves report
+51. ✅ Report status is resolved
+52. ✅ GET `/admin/audit-logs` returns 200
+53. ✅ Audit logs recorded administrative actions
+54. ✅ User administrative actions are audited
+55. ✅ Content moderation actions are audited
+56. ✅ Ordinary users cannot access audit logs (403)
+57. ✅ GET `/admin/analytics?period=28d` returns 200
+58. ✅ Returns timeline array with daily growth trends
+59. ✅ GET `/admin/settings` returns 200
+60. ✅ Default settings populated
+61. ✅ PATCH `/admin/settings` updates configuration
+62. ✅ maxVideoUploadSizeMb updated to 750
+63. ✅ POST `/admin/announcements` creates announcement (201)
+64. ✅ GET `/announcements/active` returns 200
+65. ✅ Active announcement visible publicly
+66. ✅ DELETE `/admin/announcements/:id` removes announcement
 
 ---
 
